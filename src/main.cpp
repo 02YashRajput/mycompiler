@@ -81,21 +81,27 @@ void printNodeTerm(NodeTerm* node, int indent) {
     }
 }
 
-void printNodeBinExprAdd(NodeBinExprAdd* node, int indent) {
-    printIndent(indent);
-    std::cout << "AddExpr:\n";
-    printNodeExpr(node->lhs, indent + 1);
-    printNodeExpr(node->rhs, indent + 1);
-}
+
 
 void printNodeBinExpr(NodeBinExpr* node, int indent) {
     printIndent(indent);
     std::cout << "BinExpr:\n";
-    if (node->add) {
-        printNodeBinExprAdd(node->add, indent + 1);
-    }
-}
 
+    std::visit([&](auto* opNode) {
+        using T = std::decay_t<decltype(opNode)>;
+        if constexpr (std::is_same_v<T, NodeBinExprAdd*>) {
+            printIndent(indent + 1);
+            std::cout << "AddExpr:\n";
+            printNodeExpr(opNode->lhs, indent + 2);
+            printNodeExpr(opNode->rhs, indent + 2);
+        } else if constexpr (std::is_same_v<T, NodeBinExprMul*>) {
+            printIndent(indent + 1);
+            std::cout << "MulExpr:\n";
+            printNodeExpr(opNode->lhs, indent + 2);
+            printNodeExpr(opNode->rhs, indent + 2);
+        }
+    }, node->op);
+}
 void printNodeExpr(NodeExpr* node, int indent) {
     printIndent(indent);
     std::cout << "Expr:\n";
@@ -170,13 +176,13 @@ int main(int argc, char **argv){
 
   Tokeniser tokeniser(std::move(contents));
   std::vector<Token> tokens = tokeniser.tokenise();
-  // printTokens(tokens);
+//   printTokens(tokens);
   
 
   Parser parser(std::move(tokens));
 
   NodeProg prog = parser.parse();
-  // printNodeProg(prog);
+//   printNodeProg(prog);
 
   Generator generator(std::move(prog));
   std::string output =  generator.gen_prog();

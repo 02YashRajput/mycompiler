@@ -29,9 +29,16 @@ struct NodeBinExprAdd
   NodeExpr *rhs;
 };
 
+struct NodeBinExprMul
+{
+  NodeExpr *lhs;
+  NodeExpr *rhs;
+};
+
 struct NodeBinExpr
 {
-  NodeBinExprAdd *add;
+  std::variant <NodeBinExprAdd *,NodeBinExprMul *> op;
+
 };
 
 struct NodeExpr
@@ -101,7 +108,28 @@ public:
         {
           bin_expr_add->rhs = rhs.value();
           bin_expr_add->lhs = bin_expr_add_lhs;
-          bin_expr->add = bin_expr_add;
+          bin_expr->op = bin_expr_add;
+          auto expr = allocator.alloc<NodeExpr>();
+          expr->var = bin_expr;
+          return expr;
+        }
+        else
+        {
+          std::cerr << "Expected expression\n";
+          std::exit(EXIT_FAILURE);
+        }
+      }
+      else if(try_consume(TokenType::mul))
+       {
+        auto bin_expr = allocator.alloc<NodeBinExpr>();
+        auto bin_expr_mul = allocator.alloc<NodeBinExprMul>();
+        auto bin_expr_mul_lhs = allocator.alloc<NodeExpr>();
+        bin_expr_mul_lhs->var = term.value();
+        if (auto rhs = parse_expr())
+        {
+          bin_expr_mul->rhs = rhs.value();
+          bin_expr_mul->lhs = bin_expr_mul_lhs;
+          bin_expr->op = bin_expr_mul;
           auto expr = allocator.alloc<NodeExpr>();
           expr->var = bin_expr;
           return expr;

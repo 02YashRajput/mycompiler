@@ -1,2 +1,2 @@
-const x = 20 + 10 + 10;
+const x = 20 * 10;
 exit x;

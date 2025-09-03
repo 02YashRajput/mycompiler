@@ -13,6 +13,7 @@ enum class TokenType
   cnst,
   eq,
   plus,
+  mul
 };
 
 struct Token
@@ -38,8 +39,8 @@ public:
     const std::unordered_map<char, TokenType> singleCharTokens = {
         {';', TokenType::semi},
         {'=', TokenType::eq},
-        {'+', TokenType::plus}
-
+        {'+', TokenType::plus},
+        {'*', TokenType::mul}
     };
 
     // Map for keywords
