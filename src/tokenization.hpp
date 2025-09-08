@@ -20,6 +20,14 @@ enum class TokenType
   close_paren,
   open_curly,
   close_curly,
+  eq,
+  lt,
+  gt,
+  lte,
+  gte,
+  neq,
+  if_,
+
 };
 
 struct Token
@@ -53,6 +61,12 @@ public:
         {')', TokenType::close_paren},
         {'{', TokenType::open_curly},
         {'}', TokenType::close_curly}};
+
+    const std::unordered_map<std::string, TokenType> doubleCharTokens = {
+        {"==", TokenType::eq},
+        {"!=", TokenType::neq},
+        {"<=", TokenType::lte},
+        {">=", TokenType::gte}};
 
     // Map for keywords
     const std::unordered_map<std::string, TokenType> keywords = {
@@ -105,6 +119,21 @@ public:
       }
       else
       {
+        // Check for two-character operators first
+        if (peek(1).has_value())
+        {
+          std::string twoCharOp = {peek().value(), peek(1).value()};
+          auto it2 = doubleCharTokens.find(twoCharOp);
+          if (it2 != doubleCharTokens.end())
+          {
+            tokens.emplace_back(it2->second);
+            consume();
+            consume();
+            continue;
+          }
+        }
+
+        // Then fallback to single-char tokens
         auto it = singleCharTokens.find(c);
         if (it != singleCharTokens.end())
         {
@@ -113,31 +142,32 @@ public:
         }
         else
         {
-          std::cerr << "Wrong input: " << c << "\n";
+          std::cerr << "Wrong input: unknown character '" << c << "'\n";
           std::exit(EXIT_FAILURE);
         }
       }
     }
-
-    return tokens;
   }
-  std::optional<char> peek(int offset = 0)
+
+  return tokens;
+} std::optional<char> peek(int offset = 0)
+{
+  if (index + offset >= src.size())
   {
-    if (index + offset >= src.size())
-    {
-      return {};
-    }
-    else
-    {
-      return src[index + offset];
-    }
+    return {};
   }
-
-  char consume()
+  else
   {
-    return src[index++];
+    return src[index + offset];
   }
+}
 
-  const std::string src;
-  size_t index = 0;
-};
+char consume()
+{
+  return src[index++];
+}
+
+const std::string src;
+size_t index = 0;
+}
+;

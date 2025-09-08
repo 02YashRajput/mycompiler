@@ -46,7 +46,7 @@ struct NodeTermParen
 };
 struct NodeTerm
 {
-  std::variant<NodeTermIntLit *, NodeTermIdent *, NodeTermParen *>val;
+  std::variant<NodeTermIntLit *, NodeTermIdent *, NodeTermParen *> val;
 };
 
 struct NodeBinExpr
@@ -73,7 +73,7 @@ struct NodeStmtConst
 struct NodeStmt;
 struct NodeStmtScope
 {
- std::vector<NodeStmt *> stmts;
+  std::vector<NodeStmt *> stmts;
 };
 struct NodeStmt
 {
@@ -119,7 +119,7 @@ public:
           auto term_paren = allocator.alloc<NodeTermParen>();
           term_paren->expr = node_expr.value();
           auto node_term = allocator.alloc<NodeTerm>();
-          node_term -> val = term_paren;
+          node_term->val = term_paren;
           return node_term;
         }
         else
@@ -133,7 +133,7 @@ public:
     return std::nullopt;
   }
 
-  std::optional<NodeExpr *> parse_expr(int min_prec = 1)
+  std::optional<NodeExpr *> parse_expr(int min_prec = 0)
   {
     std::optional<NodeTerm *> term_lhs = parse_term();
     if (!term_lhs.has_value())
@@ -261,24 +261,29 @@ public:
       node_stmt->stmt = node_stmt_const;
       return node_stmt;
     }
-    else if (peek().has_value() && peek()-> type == TokenType::open_curly){
+    else if (peek().has_value() && peek()->type == TokenType::open_curly)
+    {
       consume();
       auto node_scope = allocator.alloc<NodeStmtScope>();
-      while(peek().has_value() && peek().value().type != TokenType::close_curly){
-        if (auto stmt = parse_stmt()) {
+      while (peek().has_value() && peek().value().type != TokenType::close_curly)
+      {
+        if (auto stmt = parse_stmt())
+        {
           node_scope->stmts.push_back(stmt.value());
-        } else {
-            std::cerr << "Expected statement inside scope\n";
-            std::exit(EXIT_FAILURE);
         }
-        
-      } 
-      if (!try_consume(TokenType::close_curly)) {
-            std::cerr << "Expected '}'\n";
-            std::exit(EXIT_FAILURE);
+        else
+        {
+          std::cerr << "Expected statement inside scope\n";
+          std::exit(EXIT_FAILURE);
+        }
+      }
+      if (!try_consume(TokenType::close_curly))
+      {
+        std::cerr << "Expected '}'\n";
+        std::exit(EXIT_FAILURE);
       }
       auto node_stmt = allocator.alloc<NodeStmt>();
-      node_stmt -> stmt = node_scope;
+      node_stmt->stmt = node_scope;
       return node_stmt;
     }
     return std::nullopt;
@@ -353,10 +358,20 @@ private:
   }
 
   std::unordered_map<TokenType, int> precedence = {
-      {TokenType::plus, 1},
+      {TokenType::eq, 0}, // ==, !=
+      {TokenType::neq, 0},
+      {TokenType::lt, 0}, // <, >, <=, >=
+      {TokenType::gt, 0},
+      {TokenType::lte, 0},
+      {TokenType::gte, 0},
+
+      {TokenType::plus, 1}, // +, -
       {TokenType::sub, 1},
-      {TokenType::mul, 2},
-      {TokenType::div, 2}};
+
+      {TokenType::mul, 2}, // *, /, %
+      {TokenType::div, 2},
+      {TokenType::mod, 2},
+  };
 
   std::vector<Token> tokens;
   size_t index = 0;

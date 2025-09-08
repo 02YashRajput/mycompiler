@@ -31,6 +31,20 @@ std::string tokenTypeToString(TokenType type)
         return "-";
     case TokenType::div:
         return "/";
+    case TokenType::mod:
+        return "%";
+    case TokenType::eq:
+        return "==";
+    case TokenType::neq:
+        return "!=";
+    case TokenType::lt:
+        return "<";
+    case TokenType::gt:
+        return ">";
+    case TokenType::lte:
+        return "<=";
+    case TokenType::gte:
+        return ">=";
     case TokenType::open_paren:
         return "(";
     case TokenType::close_paren:
@@ -43,6 +57,7 @@ std::string tokenTypeToString(TokenType type)
         return "unknown";
     }
 }
+
 
 // Function to print tokens
 void printTokens(const std::vector<Token> &tokens)
