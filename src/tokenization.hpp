@@ -11,9 +11,15 @@ enum class TokenType
   semi,
   ident,
   cnst,
-  eq,
+  assign,
   plus,
-  mul
+  mul,
+  sub,
+  div,
+  open_paren,
+  close_paren,
+  open_curly,
+  close_curly,
 };
 
 struct Token
@@ -38,10 +44,15 @@ public:
     // Map for single-character tokens
     const std::unordered_map<char, TokenType> singleCharTokens = {
         {';', TokenType::semi},
-        {'=', TokenType::eq},
+        {'=', TokenType::assign},
         {'+', TokenType::plus},
-        {'*', TokenType::mul}
-    };
+        {'*', TokenType::mul},
+        {'-', TokenType::sub},
+        {'/', TokenType::div},
+        {'(', TokenType::open_paren},
+        {')', TokenType::close_paren},
+        {'{', TokenType::open_curly},
+        {'}', TokenType::close_curly}};
 
     // Map for keywords
     const std::unordered_map<std::string, TokenType> keywords = {
@@ -85,9 +96,9 @@ public:
       }
       else if (std::isspace(c))
       {
-        if (c == '\n' && tokens[tokens.size() - 1].type != TokenType::semi)
+        if (c == '\n' && (tokens[tokens.size() - 1].type != TokenType::semi && tokens[tokens.size() - 1].type != TokenType::open_curly && tokens[tokens.size() - 1].type != TokenType::close_curly))
         {
-          std::cerr << "Wrong input: " << c << "\n";
+          std::cerr << "Wrong input: expected semi " << c << "\n";
           std::exit(EXIT_FAILURE);
         }
         consume();

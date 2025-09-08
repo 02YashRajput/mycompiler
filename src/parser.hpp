@@ -6,24 +6,19 @@
 #include <optional>
 #include "./arenaAllocator.hpp"
 
-struct NodeTermIntLit
-{
-  Token int_lit;
-};
-
-struct NodeTermIdent
-{
-  Token ident;
-};
-
-struct NodeTerm
-{
-  std::variant<NodeTermIntLit *, NodeTermIdent *> val;
-};
-
 struct NodeExpr;
 
 struct NodeBinExprAdd
+{
+  NodeExpr *lhs;
+  NodeExpr *rhs;
+};
+struct NodeBinExprSub
+{
+  NodeExpr *lhs;
+  NodeExpr *rhs;
+};
+struct NodeBinExprDiv
 {
   NodeExpr *lhs;
   NodeExpr *rhs;
@@ -35,10 +30,28 @@ struct NodeBinExprMul
   NodeExpr *rhs;
 };
 
+struct NodeTermIntLit
+{
+  Token int_lit;
+};
+
+struct NodeTermIdent
+{
+  Token ident;
+};
+
+struct NodeTermParen
+{
+  NodeExpr *expr;
+};
+struct NodeTerm
+{
+  std::variant<NodeTermIntLit *, NodeTermIdent *, NodeTermParen *>val;
+};
+
 struct NodeBinExpr
 {
-  std::variant <NodeBinExprAdd *,NodeBinExprMul *> op;
-
+  std::variant<NodeBinExprAdd *, NodeBinExprMul *, NodeBinExprSub *, NodeBinExprDiv *> op;
 };
 
 struct NodeExpr
@@ -57,9 +70,14 @@ struct NodeStmtConst
   NodeExpr *expr;
 };
 
+struct NodeStmt;
+struct NodeStmtScope
+{
+ std::vector<NodeStmt *> stmts;
+};
 struct NodeStmt
 {
-  std::variant<NodeStmtExit *, NodeStmtConst *> stmt;
+  std::variant<NodeStmtExit *, NodeStmtConst *, NodeStmtScope *> stmt;
 };
 
 struct NodeProg
@@ -91,63 +109,106 @@ public:
       node_term->val = node_ident;
       return node_term;
     }
-    return std::nullopt;
-  }
-
-  std::optional<NodeExpr *> parse_expr()
-  {
-    if (auto term = parse_term())
+    else if (auto open_paren = try_consume(TokenType::open_paren))
     {
-      if (try_consume(TokenType::plus))
+      auto node_expr = parse_expr();
+      if (node_expr.has_value())
       {
-        auto bin_expr = allocator.alloc<NodeBinExpr>();
-        auto bin_expr_add = allocator.alloc<NodeBinExprAdd>();
-        auto bin_expr_add_lhs = allocator.alloc<NodeExpr>();
-        bin_expr_add_lhs->var = term.value();
-        if (auto rhs = parse_expr())
+        if (auto close_paren = try_consume(TokenType::close_paren))
         {
-          bin_expr_add->rhs = rhs.value();
-          bin_expr_add->lhs = bin_expr_add_lhs;
-          bin_expr->op = bin_expr_add;
-          auto expr = allocator.alloc<NodeExpr>();
-          expr->var = bin_expr;
-          return expr;
+          auto term_paren = allocator.alloc<NodeTermParen>();
+          term_paren->expr = node_expr.value();
+          auto node_term = allocator.alloc<NodeTerm>();
+          node_term -> val = term_paren;
+          return node_term;
         }
         else
         {
-          std::cerr << "Expected expression\n";
+          std::cerr << "Expected close parenthesis\n";
           std::exit(EXIT_FAILURE);
         }
       }
-      else if(try_consume(TokenType::mul))
-       {
-        auto bin_expr = allocator.alloc<NodeBinExpr>();
-        auto bin_expr_mul = allocator.alloc<NodeBinExprMul>();
-        auto bin_expr_mul_lhs = allocator.alloc<NodeExpr>();
-        bin_expr_mul_lhs->var = term.value();
-        if (auto rhs = parse_expr())
+    }
+
+    return std::nullopt;
+  }
+
+  std::optional<NodeExpr *> parse_expr(int min_prec = 1)
+  {
+    std::optional<NodeTerm *> term_lhs = parse_term();
+    if (!term_lhs.has_value())
+    {
+      return std::nullopt;
+    }
+
+    auto expr_lhs = allocator.alloc<NodeExpr>();
+    expr_lhs->var = term_lhs.value();
+
+    while (true)
+    {
+      std::optional<Token> curr_tok = peek();
+      int prec;
+      if (curr_tok.has_value())
+      {
+        prec = get_precedence(curr_tok->type);
+        if (prec < min_prec)
         {
-          bin_expr_mul->rhs = rhs.value();
-          bin_expr_mul->lhs = bin_expr_mul_lhs;
-          bin_expr->op = bin_expr_mul;
-          auto expr = allocator.alloc<NodeExpr>();
-          expr->var = bin_expr;
-          return expr;
-        }
-        else
-        {
-          std::cerr << "Expected expression\n";
-          std::exit(EXIT_FAILURE);
+          break;
         }
       }
       else
       {
-        auto *node_expr = allocator.alloc<NodeExpr>();
-        node_expr->var = term.value();
-        return node_expr;
+        std::cerr << "Expected semi\n";
+        std::exit(EXIT_FAILURE);
       }
+      Token op = consume();
+      int next_min_prec = prec + 1;
+      auto expr_rhs = parse_expr(next_min_prec);
+      if (!expr_rhs.has_value())
+      {
+        std::cerr << "Unable to parse expression" << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      auto bin_expr = allocator.alloc<NodeBinExpr>();
+      if (op.type == TokenType::plus)
+      {
+        auto bin_expr_add = allocator.alloc<NodeBinExprAdd>();
+        bin_expr_add->lhs = expr_lhs;
+        bin_expr_add->rhs = expr_rhs.value();
+        bin_expr->op = bin_expr_add;
+      }
+      else if (op.type == TokenType::mul)
+      {
+        auto bin_expr_mul = allocator.alloc<NodeBinExprMul>();
+        bin_expr_mul->lhs = expr_lhs;
+        bin_expr_mul->rhs = expr_rhs.value();
+        bin_expr->op = bin_expr_mul;
+      }
+      else if (op.type == TokenType::sub)
+      {
+        auto bin_expr_sub = allocator.alloc<NodeBinExprSub>();
+        bin_expr_sub->lhs = expr_lhs;
+        bin_expr_sub->rhs = expr_rhs.value();
+        bin_expr->op = bin_expr_sub;
+      }
+      else if (op.type == TokenType::div)
+      {
+        auto bin_expr_div = allocator.alloc<NodeBinExprDiv>();
+        bin_expr_div->lhs = expr_lhs;
+        bin_expr_div->rhs = expr_rhs.value();
+        bin_expr->op = bin_expr_div;
+      }
+      else
+      {
+        std::cerr << "Unexpected operation" << std::endl;
+        exit(EXIT_FAILURE);
+      }
+
+      auto new_expr = allocator.alloc<NodeExpr>();
+      new_expr->var = bin_expr;
+      expr_lhs = new_expr;
     }
-    return std::nullopt;
+    return expr_lhs;
   }
 
   std::optional<NodeStmt *> parse_stmt()
@@ -175,7 +236,7 @@ public:
         std::exit(EXIT_FAILURE);
       }
     }
-    else if (peek().has_value() && peek()->type == TokenType::cnst && peek(1).has_value() && peek(1).value().type == TokenType::ident && peek(2).has_value() && peek(2).value().type == TokenType::eq)
+    else if (peek().has_value() && peek()->type == TokenType::cnst && peek(1).has_value() && peek(1).value().type == TokenType::ident && peek(2).has_value() && peek(2).value().type == TokenType::assign)
     {
       consume();
       auto *node_stmt_const = allocator.alloc<NodeStmtConst>();
@@ -198,6 +259,26 @@ public:
       }
 
       node_stmt->stmt = node_stmt_const;
+      return node_stmt;
+    }
+    else if (peek().has_value() && peek()-> type == TokenType::open_curly){
+      consume();
+      auto node_scope = allocator.alloc<NodeStmtScope>();
+      while(peek().has_value() && peek().value().type != TokenType::close_curly){
+        if (auto stmt = parse_stmt()) {
+          node_scope->stmts.push_back(stmt.value());
+        } else {
+            std::cerr << "Expected statement inside scope\n";
+            std::exit(EXIT_FAILURE);
+        }
+        
+      } 
+      if (!try_consume(TokenType::close_curly)) {
+            std::cerr << "Expected '}'\n";
+            std::exit(EXIT_FAILURE);
+      }
+      auto node_stmt = allocator.alloc<NodeStmt>();
+      node_stmt -> stmt = node_scope;
       return node_stmt;
     }
     return std::nullopt;
@@ -260,6 +341,22 @@ private:
     }
     return std::nullopt;
   }
+
+  int get_precedence(TokenType type)
+  {
+    auto it = precedence.find(type);
+    if (it != precedence.end())
+    {
+      return it->second;
+    }
+    return -1;
+  }
+
+  std::unordered_map<TokenType, int> precedence = {
+      {TokenType::plus, 1},
+      {TokenType::sub, 1},
+      {TokenType::mul, 2},
+      {TokenType::div, 2}};
 
   std::vector<Token> tokens;
   size_t index = 0;
