@@ -8,6 +8,41 @@
 
 struct NodeExpr;
 
+struct NodeBinExprEq
+{
+  NodeExpr *lhs;
+  NodeExpr *rhs;
+};
+struct NodeBinExprNeq
+{
+  NodeExpr *lhs;
+  NodeExpr *rhs;
+};
+struct NodeBinExprLt
+{
+  NodeExpr *lhs;
+  NodeExpr *rhs;
+};
+struct NodeBinExprGt
+{
+  NodeExpr *lhs;
+  NodeExpr *rhs;
+};
+struct NodeBinExprLte
+{
+  NodeExpr *lhs;
+  NodeExpr *rhs;
+};
+struct NodeBinExprGte
+{
+  NodeExpr *lhs;
+  NodeExpr *rhs;
+};
+struct NodeBinExprMod
+{
+  NodeExpr *lhs;
+  NodeExpr *rhs;
+};
 struct NodeBinExprAdd
 {
   NodeExpr *lhs;
@@ -51,7 +86,7 @@ struct NodeTerm
 
 struct NodeBinExpr
 {
-  std::variant<NodeBinExprAdd *, NodeBinExprMul *, NodeBinExprSub *, NodeBinExprDiv *> op;
+  std::variant<NodeBinExprAdd *, NodeBinExprMul *, NodeBinExprSub *, NodeBinExprDiv *, NodeBinExprMod *, NodeBinExprEq *, NodeBinExprGt *, NodeBinExprNeq *, NodeBinExprLte *, NodeBinExprGte *, NodeBinExprLt *> op;
 };
 
 struct NodeExpr
@@ -197,6 +232,55 @@ public:
         bin_expr_div->lhs = expr_lhs;
         bin_expr_div->rhs = expr_rhs.value();
         bin_expr->op = bin_expr_div;
+      }
+      else if (op.type == TokenType::mod)
+      {
+        auto bin_expr_mod = allocator.alloc<NodeBinExprMod>();
+        bin_expr_mod->lhs = expr_lhs;
+        bin_expr_mod->rhs = expr_rhs.value();
+        bin_expr->op = bin_expr_mod;
+      }
+      else if (op.type == TokenType::eq)
+      {
+        auto bin_expr_eq = allocator.alloc<NodeBinExprEq>();
+        bin_expr_eq->lhs = expr_lhs;
+        bin_expr_eq->rhs = expr_rhs.value();
+        bin_expr->op = bin_expr_eq;
+      }
+      else if (op.type == TokenType::neq)
+      {
+        auto bin_expr_neq = allocator.alloc<NodeBinExprNeq>();
+        bin_expr_neq->lhs = expr_lhs;
+        bin_expr_neq->rhs = expr_rhs.value();
+        bin_expr->op = bin_expr_neq;
+      }
+      else if (op.type == TokenType::lt)
+      {
+        auto bin_expr_lt = allocator.alloc<NodeBinExprLt>();
+        bin_expr_lt->lhs = expr_lhs;
+        bin_expr_lt->rhs = expr_rhs.value();
+        bin_expr->op = bin_expr_lt;
+      }
+      else if (op.type == TokenType::gt)
+      {
+        auto bin_expr_gt = allocator.alloc<NodeBinExprGt>();
+        bin_expr_gt->lhs = expr_lhs;
+        bin_expr_gt->rhs = expr_rhs.value();
+        bin_expr->op = bin_expr_gt;
+      }
+      else if (op.type == TokenType::lte)
+      {
+        auto bin_expr_lte = allocator.alloc<NodeBinExprLte>();
+        bin_expr_lte->lhs = expr_lhs;
+        bin_expr_lte->rhs = expr_rhs.value();
+        bin_expr->op = bin_expr_lte;
+      }
+      else if (op.type == TokenType::gte)
+      {
+        auto bin_expr_gte = allocator.alloc<NodeBinExprGte>();
+        bin_expr_gte->lhs = expr_lhs;
+        bin_expr_gte->rhs = expr_rhs.value();
+        bin_expr->op = bin_expr_gte;
       }
       else
       {

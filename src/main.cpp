@@ -35,6 +35,8 @@ std::string tokenTypeToString(TokenType type)
         return "==";
     case TokenType::neq:
         return "!=";
+    case TokenType::mod:
+        return "%";
     case TokenType::lt:
         return "<";
     case TokenType::gt:
