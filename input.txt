@@ -1,5 +1,10 @@
 const x = 10;
 const y = 20;
-print y ;
-print y ;
+{
+  const x = 100;
+  print x;
+}
+if(x < y){
+  print y;
+}
 exit x;

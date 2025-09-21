@@ -77,7 +77,8 @@ public:
     const std::unordered_map<std::string, TokenType> keywords = {
         {"exit", TokenType::exit},
         {"const", TokenType::cnst},
-        {"print", TokenType:: print},
+        {"print", TokenType::print},
+        {"if", TokenType::if_}
 
     };
 

@@ -189,6 +189,31 @@ public:
     std::visit(visitor, expr->var);
   }
 
+  void gen_scope(const NodeStmtScope *stmt_scope)
+  {
+    enter_scope();
+
+    for (const NodeStmt *stmt_s : stmt_scope->stmts)
+    {
+      gen_stmt(stmt_s);
+    }
+    exit_scope();
+  }
+
+  void gen_exit()
+  {
+    output << "    mov rax, 1\n";
+    output << "    mov rdi, 1\n";
+    output << "    lea rsi, [rsp-1]\n";
+    output << "    mov byte [rsp-1], 10\n";
+    output << "    mov rdx, 1\n";
+    output << "    syscall\n";
+    output << "    mov rax, 60\n";
+    pop("rdi");
+    output << "    syscall\n";
+    is_terminated = true;
+  }
+
   void gen_stmt(const NodeStmt *stmt)
   {
     struct StmtVisitor
@@ -197,16 +222,23 @@ public:
       void operator()(const NodeStmtExit *stmt_exit) const
       {
         gen->gen_expr(stmt_exit->expr);
-        gen->output << "    mov rax, 60\n";
-        gen->pop("rdi");
-        gen->output << "    syscall\n";
-        gen->is_terminated = true;
+        gen->gen_exit();
       }
       void operator()(const NodeStmtPrint *stmt_print) const
       {
         gen->gen_expr(stmt_print->expr);
         gen->pop("rdi");
         gen->output << "    call print_int\n";
+      }
+      void operator()(const NodeStmtIf *stmt_if) const
+      {
+        gen->gen_expr(stmt_if->expr);
+        gen->pop("rax");
+        std::string label = gen->create_label();
+        gen->output << "    test rax, rax\n";
+        gen->output << "    jz " << label << "\n";
+        gen->gen_scope(stmt_if->scope);
+        gen->output << label << ":\n";
       }
       void operator()(const NodeStmtConst *stmt_const) const
       {
@@ -220,13 +252,7 @@ public:
       }
       void operator()(const NodeStmtScope *stmt_scope) const
       {
-        gen->enter_scope();
-
-        for (const NodeStmt *stmt_s : stmt_scope->stmts)
-        {
-          gen->gen_stmt(stmt_s);
-        }
-        gen->exit_scope();
+        gen->gen_scope(stmt_scope);
       }
     };
     StmtVisitor visitor{this};
@@ -245,9 +271,7 @@ public:
       gen_stmt(stmt);
     }
 
-    output << "    mov rax, 60\n";
-    output << "    mov rdi, 0\n";
-    output << "    syscall\n";
+    gen_exit();
 
     return output.str();
   }
@@ -274,8 +298,15 @@ private:
     output << "    pop " << reg << "\n";
     stack_size--;
   }
+  std::string create_label()
+  {
+    std::stringstream ss;
+    ss << "label" << label_count++;
+    return ss.str();
+  }
 
-  void enter_scope()
+  void
+  enter_scope()
   {
     scopes.push_back({});
   }
@@ -333,6 +364,7 @@ private:
   std::stringstream output;
   const NodeProg prog;
   size_t stack_size = 0;
+  int label_count = 0;
   std::unordered_map<std::string, Var> globals{};
   std::vector<std::vector<ScopeEntry>> scopes;
 };
