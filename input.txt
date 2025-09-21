@@ -1,6 +1,3 @@
 const x = 10;
-{
-  const x = 20;
-  exit x;
-}
-exit x;
+const y = 20;
+exit x < y;

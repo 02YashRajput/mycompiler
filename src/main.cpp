@@ -31,8 +31,6 @@ std::string tokenTypeToString(TokenType type)
         return "-";
     case TokenType::div:
         return "/";
-    case TokenType::mod:
-        return "%";
     case TokenType::eq:
         return "==";
     case TokenType::neq:
@@ -57,7 +55,6 @@ std::string tokenTypeToString(TokenType type)
         return "unknown";
     }
 }
-
 
 // Function to print tokens
 void printTokens(const std::vector<Token> &tokens)
@@ -85,7 +82,7 @@ void printNodeBinExpr(NodeBinExpr *node, int indent = 0);
 void printNodeStmtExit(NodeStmtExit *node, int indent = 0);
 void printNodeStmtConst(NodeStmtConst *node, int indent = 0);
 void printNodeStmt(NodeStmt *node, int indent = 0);
-void printNodeStmtScope(NodeStmtScope* node, int indent);
+void printNodeStmtScope(NodeStmtScope *node, int indent);
 void printNodeProg(NodeProg &prog, int indent = 0);
 
 // --- Implementations ---
@@ -201,31 +198,31 @@ void printNodeStmtConst(NodeStmtConst *node, int indent)
 
     printNodeExpr(node->expr, indent + 1);
 }
-void printNodeStmt(NodeStmt* node, int indent)
+void printNodeStmt(NodeStmt *node, int indent)
 {
     printIndent(indent);
     std::cout << "Stmt:\n";
 
-    if (std::holds_alternative<NodeStmtExit*>(node->stmt))
+    if (std::holds_alternative<NodeStmtExit *>(node->stmt))
     {
-        printNodeStmtExit(std::get<NodeStmtExit*>(node->stmt), indent + 1);
+        printNodeStmtExit(std::get<NodeStmtExit *>(node->stmt), indent + 1);
     }
-    else if (std::holds_alternative<NodeStmtConst*>(node->stmt))
+    else if (std::holds_alternative<NodeStmtConst *>(node->stmt))
     {
-        printNodeStmtConst(std::get<NodeStmtConst*>(node->stmt), indent + 1);
+        printNodeStmtConst(std::get<NodeStmtConst *>(node->stmt), indent + 1);
     }
-    else if (std::holds_alternative<NodeStmtScope*>(node->stmt))
+    else if (std::holds_alternative<NodeStmtScope *>(node->stmt))
     {
-        printNodeStmtScope(std::get<NodeStmtScope*>(node->stmt), indent + 1);
+        printNodeStmtScope(std::get<NodeStmtScope *>(node->stmt), indent + 1);
     }
 }
 
-void printNodeStmtScope(NodeStmtScope* node, int indent)
+void printNodeStmtScope(NodeStmtScope *node, int indent)
 {
     printIndent(indent);
     std::cout << "Scope {\n";
 
-    for (auto* stmt : node->stmts)
+    for (auto *stmt : node->stmts)
     {
         printNodeStmt(stmt, indent + 1);
     }

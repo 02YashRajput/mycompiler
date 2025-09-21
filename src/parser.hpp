@@ -370,7 +370,6 @@ private:
 
       {TokenType::mul, 2}, // *, /, %
       {TokenType::div, 2},
-      {TokenType::mod, 2},
   };
 
   std::vector<Token> tokens;

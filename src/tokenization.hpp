@@ -147,27 +147,26 @@ public:
         }
       }
     }
-  }
 
-  return tokens;
-} std::optional<char> peek(int offset = 0)
-{
-  if (index + offset >= src.size())
+    return tokens;
+  }
+  std::optional<char> peek(int offset = 0)
   {
-    return {};
+    if (index + offset >= src.size())
+    {
+      return {};
+    }
+    else
+    {
+      return src[index + offset];
+    }
   }
-  else
+
+  char consume()
   {
-    return src[index + offset];
+    return src[index++];
   }
-}
 
-char consume()
-{
-  return src[index++];
-}
-
-const std::string src;
-size_t index = 0;
-}
-;
+  const std::string src;
+  size_t index = 0;
+};
