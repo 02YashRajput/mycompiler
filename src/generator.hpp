@@ -202,6 +202,12 @@ public:
         gen->output << "    syscall\n";
         gen->is_terminated = true;
       }
+      void operator()(const NodeStmtPrint *stmt_print) const
+      {
+        gen->gen_expr(stmt_print->expr);
+        gen->pop("rdi");
+        gen->output << "    call print_int\n";
+      }
       void operator()(const NodeStmtConst *stmt_const) const
       {
         if (gen->is_declared(stmt_const->ident.val.value()))
@@ -230,7 +236,7 @@ public:
   std::string gen_prog()
   {
 
-    output << "global _start\n_start:\n";
+    output << "extern print_int\nglobal _start\n_start:\n";
 
     for (const NodeStmt *stmt : prog.stmts)
     {

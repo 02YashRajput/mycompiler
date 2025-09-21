@@ -106,13 +106,18 @@ struct NodeStmtConst
 };
 
 struct NodeStmt;
+
+struct NodeStmtPrint
+{
+  NodeExpr *expr;
+};
 struct NodeStmtScope
 {
   std::vector<NodeStmt *> stmts;
 };
 struct NodeStmt
 {
-  std::variant<NodeStmtExit *, NodeStmtConst *, NodeStmtScope *> stmt;
+  std::variant<NodeStmtExit *, NodeStmtConst *, NodeStmtScope *, NodeStmtPrint *> stmt;
 };
 
 struct NodeProg
@@ -307,6 +312,28 @@ public:
       {
         node_stmt_exit->expr = node_expr.value();
         node_stmt->stmt = node_stmt_exit;
+        if (!try_consume(TokenType::semi))
+        {
+          std::cerr << "Expected semi\n";
+          std::exit(EXIT_FAILURE);
+        }
+        return node_stmt;
+      }
+      else
+      {
+        std::cerr << "Expected Expression\n";
+        std::exit(EXIT_FAILURE);
+      }
+    }
+    else if (peek().has_value() && peek()->type == TokenType::print)
+    {
+      consume();
+      auto *node_stmt_print = allocator.alloc<NodeStmtPrint>();
+      auto *node_stmt = allocator.alloc<NodeStmt>();
+      if (auto node_expr = parse_expr())
+      {
+        node_stmt_print->expr = node_expr.value();
+        node_stmt->stmt = node_stmt_print;
         if (!try_consume(TokenType::semi))
         {
           std::cerr << "Expected semi\n";

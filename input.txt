@@ -1,3 +1,5 @@
 const x = 10;
 const y = 20;
-exit x > y;
+print y ;
+print y ;
+exit x;

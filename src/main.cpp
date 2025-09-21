@@ -21,6 +21,8 @@ std::string tokenTypeToString(TokenType type)
         return "ident";
     case TokenType::cnst:
         return "const";
+    case TokenType::print:
+        return "print";
     case TokenType::assign:
         return "=";
     case TokenType::plus:
@@ -288,8 +290,9 @@ int main(int argc, char **argv)
         std::fstream file("out.asm", std::ios::out);
         file << output;
     }
-    system("nasm -felf64 out.asm");
-    system("ld -o out out.o");
+    system("nasm -felf64 print_int.asm -o print_int.o");
+    system("nasm -felf64 out.asm -o out.o");
+    system("ld -o out out.o print_int.o");
     std::cout << "Ans: ";
     return EXIT_SUCCESS;
 }

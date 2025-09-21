@@ -6,4 +6,6 @@ cmake --build build/
 
 ./out
 
+echo 
+
 echo $?

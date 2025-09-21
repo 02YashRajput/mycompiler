@@ -28,6 +28,7 @@ enum class TokenType
   gte,
   neq,
   if_,
+  print,
 
 };
 
@@ -76,6 +77,7 @@ public:
     const std::unordered_map<std::string, TokenType> keywords = {
         {"exit", TokenType::exit},
         {"const", TokenType::cnst},
+        {"print", TokenType:: print},
 
     };
 
