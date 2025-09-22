@@ -116,10 +116,28 @@ struct NodeStmtScope
   std::vector<NodeStmt *> stmts;
 };
 
+struct NodeStmtIfCont;
+
+struct NodeStmtElse
+{
+  NodeStmtScope *scope;
+};
+struct NodeStmtElif
+{
+  NodeExpr *expr;
+  NodeStmtScope *scope;
+  std::optional<NodeStmtIfCont *> cont;
+};
+struct NodeStmtIfCont
+{
+  std::variant<NodeStmtElse *, NodeStmtElif *> clause;
+};
+
 struct NodeStmtIf
 {
   NodeExpr *expr;
   NodeStmtScope *scope;
+  std::optional<NodeStmtIfCont *> cont;
 };
 struct NodeStmt
 {
@@ -334,6 +352,64 @@ public:
     return node_scope;
   }
 
+  std::optional<NodeStmtIfCont *> parse_if_cont()
+  {
+    if (try_consume(TokenType::elif))
+    {
+      if (!try_consume(TokenType::open_paren))
+      {
+        std::cerr << "Expected '('\n";
+        std::exit(EXIT_FAILURE);
+      }
+      auto *node_elif = allocator.alloc<NodeStmtElif>();
+      if (auto node_expr = parse_expr())
+      {
+        node_elif->expr = node_expr.value();
+        if (!try_consume(TokenType::close_paren))
+        {
+          std::cerr << "Expected ')'\n";
+          std::exit(EXIT_FAILURE);
+        }
+
+        if (auto node_scope = parse_scope())
+        {
+          node_elif->scope = node_scope.value();
+          node_elif->cont = parse_if_cont();
+          auto node_cont = allocator.alloc<NodeStmtIfCont>();
+          node_cont->clause = node_elif;
+          return node_cont;
+        }
+        else
+        {
+          std::cerr << "Expected scope\n";
+          std::exit(EXIT_FAILURE);
+        }
+      }
+      else
+      {
+        std::cerr << "Expected expression\n";
+        std::exit(EXIT_FAILURE);
+      }
+    }
+    if (try_consume(TokenType::else_))
+    {
+      auto node_else = allocator.alloc<NodeStmtElse>();
+      if (auto node_scope = parse_scope())
+      {
+        node_else->scope = node_scope.value();
+        auto node_cont = allocator.alloc<NodeStmtIfCont>();
+        node_cont->clause = node_else;
+        return node_cont;
+      }
+      else
+      {
+        std::cerr << "Expected scope\n";
+        std::exit(EXIT_FAILURE);
+      }
+    }
+    return std::nullopt;
+  }
+
   std::optional<NodeStmt *> parse_stmt()
   {
     if (peek().has_value() && peek()->type == TokenType::exit)
@@ -435,25 +511,23 @@ public:
       {
         node_if->expr = node_expr.value();
 
-        if (try_consume(TokenType::close_paren))
+        if (!try_consume(TokenType::close_paren))
         {
+          std::cerr << "Expected ')'\n";
+          std::exit(EXIT_FAILURE);
+        }
 
-          if (auto node_scope = parse_scope())
-          {
-            node_if->scope = node_scope.value();
-            auto node_stmt = allocator.alloc<NodeStmt>();
-            node_stmt->stmt = node_if;
-            return node_stmt;
-          }
-          else
-          {
-            std::cerr << "Expected scope\n";
-            std::exit(EXIT_FAILURE);
-          }
+        if (auto node_scope = parse_scope())
+        {
+          node_if->scope = node_scope.value();
+          node_if->cont = parse_if_cont();
+          auto node_stmt = allocator.alloc<NodeStmt>();
+          node_stmt->stmt = node_if;
+          return node_stmt;
         }
         else
         {
-          std::cerr << "Expected ')'\n";
+          std::cerr << "Expected scope\n";
           std::exit(EXIT_FAILURE);
         }
       }
@@ -466,7 +540,8 @@ public:
     return std::nullopt;
   }
 
-  std::optional<NodeProg> parse_prog()
+  std::optional<NodeProg>
+  parse_prog()
   {
     NodeProg prog;
 

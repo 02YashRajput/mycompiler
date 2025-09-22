@@ -214,6 +214,38 @@ public:
     is_terminated = true;
   }
 
+  void gen_if_cont(const NodeStmtIfCont *stmt_if_cont, const std::string &end_label)
+  {
+    struct StmtIfContVisitor
+    {
+      Generator *gen;
+      const std::string &end_label;
+
+      void operator()(const NodeStmtElif *stmt_elif) const
+      {
+        gen->gen_expr(stmt_elif->expr);
+        gen->pop("rax");
+        std::string label = gen->create_label();
+        gen->output << "    test rax, rax\n";
+        gen->output << "    jz " << label << "\n";
+        gen->gen_scope(stmt_elif->scope);
+        gen->output << "    jmp " << end_label << "\n";
+        if (stmt_elif->cont.has_value())
+        {
+          gen->output << label << ":\n";
+          gen->gen_if_cont(stmt_elif->cont.value(), end_label);
+        }
+      }
+
+      void operator()(const NodeStmtElse *stmt_else) const
+      {
+        gen->gen_scope(stmt_else->scope);
+      }
+    };
+    StmtIfContVisitor visitor{this, end_label};
+    std::visit(visitor, stmt_if_cont->clause);
+  }
+
   void gen_stmt(const NodeStmt *stmt)
   {
     struct StmtVisitor
@@ -238,7 +270,18 @@ public:
         gen->output << "    test rax, rax\n";
         gen->output << "    jz " << label << "\n";
         gen->gen_scope(stmt_if->scope);
-        gen->output << label << ":\n";
+        if (stmt_if->cont.has_value())
+        {
+          const std::string end_label = gen->create_label();
+          gen->output << "    jmp " << end_label << "\n";
+          gen->output << label << ":\n";
+          gen->gen_if_cont(stmt_if->cont.value(), end_label);
+          gen->output << end_label << ":\n";
+        }
+        else
+        {
+          gen->output << label << ":\n";
+        }
       }
       void operator()(const NodeStmtConst *stmt_const) const
       {

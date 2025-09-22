@@ -25,6 +25,10 @@ std::string tokenTypeToString(TokenType type)
         return "print";
     case TokenType::if_:
         return "if";
+    case TokenType::else_:
+        return "else";
+    case TokenType::elif:
+        return "elif";
     case TokenType::assign:
         return "=";
     case TokenType::plus:

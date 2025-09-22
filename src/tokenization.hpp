@@ -29,6 +29,8 @@ enum class TokenType
   neq,
   if_,
   print,
+  else_,
+  elif
 
 };
 
@@ -78,7 +80,9 @@ public:
         {"exit", TokenType::exit},
         {"const", TokenType::cnst},
         {"print", TokenType::print},
-        {"if", TokenType::if_}
+        {"if", TokenType::if_},
+        {"else", TokenType::else_},
+        {"elif", TokenType::elif},
 
     };
 
