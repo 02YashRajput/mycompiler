@@ -257,7 +257,6 @@ exit result == 27;  # Exits with code 1 (true)
 
 ## Future Enhancements
 
-- [ ] Add support for conditional statements (`if`/`else`)
 - [ ] Implement loops (`while`, `for`)
 - [ ] Add function definitions and calls
 - [ ] Support for more data types (strings, booleans)
