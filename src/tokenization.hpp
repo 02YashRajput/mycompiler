@@ -30,8 +30,11 @@ enum class TokenType
   if_,
   print,
   else_,
-  elif
-
+  elif,
+  int_,
+  // string_,
+  // string_lit,
+  // double_qoutes,
 };
 
 struct Token
@@ -83,6 +86,8 @@ public:
         {"if", TokenType::if_},
         {"else", TokenType::else_},
         {"elif", TokenType::elif},
+        {"int", TokenType::int_},
+        // {"string", TokenType::string_},
 
     };
 

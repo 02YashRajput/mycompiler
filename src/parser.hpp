@@ -6,6 +6,11 @@
 #include <optional>
 #include "./arenaAllocator.hpp"
 
+enum class DataType
+{
+  Int,
+};
+
 struct NodeExpr;
 
 struct NodeBinExprEq
@@ -65,9 +70,9 @@ struct NodeBinExprMul
   NodeExpr *rhs;
 };
 
-struct NodeTermIntLit
+struct NodeTermLit
 {
-  Token int_lit;
+  Token token;
 };
 
 struct NodeTermIdent
@@ -81,7 +86,7 @@ struct NodeTermParen
 };
 struct NodeTerm
 {
-  std::variant<NodeTermIntLit *, NodeTermIdent *, NodeTermParen *> val;
+  std::variant<NodeTermLit *, NodeTermIdent *, NodeTermParen *> val;
 };
 
 struct NodeBinExpr
@@ -102,6 +107,7 @@ struct NodeStmtExit
 struct NodeStmtConst
 {
   Token ident;
+  DataType dtype;
   NodeExpr *expr;
 };
 
@@ -160,9 +166,9 @@ public:
     if (auto int_lit_token = try_consume(TokenType::int_lit))
     {
       auto *node_term = allocator.alloc<NodeTerm>();
-      auto *node_int_lit = allocator.alloc<NodeTermIntLit>();
-      node_int_lit->int_lit = int_lit_token.value();
-      node_term->val = node_int_lit;
+      auto *node_lit = allocator.alloc<NodeTermLit>();
+      node_lit->token = int_lit_token.value();
+      node_term->val = node_lit;
       return node_term;
     }
     else if (auto ident_token = try_consume(TokenType::ident))
@@ -457,12 +463,35 @@ public:
         std::exit(EXIT_FAILURE);
       }
     }
-    else if (peek().has_value() && peek()->type == TokenType::cnst && peek(1).has_value() && peek(1).value().type == TokenType::ident && peek(2).has_value() && peek(2).value().type == TokenType::assign)
+    else if (peek().has_value() && peek()->type == TokenType::cnst)
     {
       consume();
       auto *node_stmt_const = allocator.alloc<NodeStmtConst>();
+      if (!peek().has_value())
+      {
+        std::cerr << "Expected type after const\n";
+        std::exit(EXIT_FAILURE);
+      }
+      auto it = typeMappings.find(peek()->type);
+      if (it == typeMappings.end())
+      {
+        std::cerr << "Expected valid type after const\n";
+        std::exit(EXIT_FAILURE);
+      }
+      DataType dtype = it->second;
+      consume();
+      if (!peek().has_value() || peek()->type != TokenType::ident)
+      {
+        std::cerr << "Expected identifier after type\n";
+        std::exit(EXIT_FAILURE);
+      }
       auto *node_stmt = allocator.alloc<NodeStmt>();
       node_stmt_const->ident = consume();
+      if (!peek().has_value() || peek()->type != TokenType::assign)
+      {
+        std::cerr << "Expected '=' after identifier\n";
+        std::exit(EXIT_FAILURE);
+      }
       consume();
       if (auto node_expr = parse_expr())
       {
@@ -609,20 +638,24 @@ private:
     return -1;
   }
 
-  std::unordered_map<TokenType, int> precedence = {
-      {TokenType::eq, 0}, // ==, !=
-      {TokenType::neq, 0},
-      {TokenType::lt, 0}, // <, >, <=, >=
-      {TokenType::gt, 0},
-      {TokenType::lte, 0},
-      {TokenType::gte, 0},
+  std::unordered_map<TokenType, DataType> typeMappings = {
+      {TokenType::int_, DataType::Int}};
 
-      {TokenType::plus, 1}, // +, -
-      {TokenType::sub, 1},
+  std::unordered_map<TokenType, int> precedence =
+      {
+          {TokenType::eq, 0}, // ==, !=
+          {TokenType::neq, 0},
+          {TokenType::lt, 0}, // <, >, <=, >=
+          {TokenType::gt, 0},
+          {TokenType::lte, 0},
+          {TokenType::gte, 0},
 
-      {TokenType::mul, 2}, // *, /, %
-      {TokenType::div, 2},
-      {TokenType::mod, 2}};
+          {TokenType::plus, 1}, // +, -
+          {TokenType::sub, 1},
+
+          {TokenType::mul, 2}, // *, /, %
+          {TokenType::div, 2},
+          {TokenType::mod, 2}};
 
   std::vector<Token> tokens;
   size_t index = 0;

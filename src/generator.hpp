@@ -7,18 +7,32 @@ class Generator
 
 public:
   explicit Generator(NodeProg program) : prog(std::move(program)) {}
+  DataType gen_lit(const NodeTermLit *term_lit)
+  {
+    const Token &tok = term_lit->token;
 
-  void gen_term(const NodeTerm *term)
+    switch (tok.type)
+    {
+    case TokenType::int_lit:
+      output << "    mov rax, " << tok.val.value() << "\n";
+      push("rax");
+      return DataType::Int;
+
+    default:
+      std::cerr << "Unknown literal type\n";
+      exit(EXIT_FAILURE);
+    }
+  }
+  DataType gen_term(const NodeTerm *term)
   {
     struct TermVisitor
     {
       Generator *gen;
-      void operator()(const NodeTermIntLit *term_int_lit) const
+      DataType operator()(const NodeTermLit *term_lit) const
       {
-        gen->output << "    mov rax, " << term_int_lit->int_lit.val.value() << "\n";
-        gen->push("rax");
+        return gen->gen_lit(term_lit);
       }
-      void operator()(const NodeTermIdent *term_ident) const
+      DataType operator()(const NodeTermIdent *term_ident) const
       {
         if (!gen->globals.contains(term_ident->ident.val.value()))
         {
@@ -29,164 +43,245 @@ public:
         std::stringstream offset;
         offset << "QWORD [rsp + " << (gen->stack_size - var.stack_loc - 1) * 8 << "]\n";
         gen->push(offset.str());
+        return var.dtype;
       }
-      void operator()(const NodeTermParen *term_paren) const
+      DataType operator()(const NodeTermParen *term_paren) const
       {
-        gen->gen_expr(term_paren->expr);
+        return gen->gen_expr(term_paren->expr);
       }
     };
     TermVisitor visitor(this);
-    std::visit(visitor, term->val);
+    return std::visit(visitor, term->val);
   }
 
-  void gen_bin_expr(const NodeBinExpr *bin_expr)
+  DataType gen_bin_expr(const NodeBinExpr *bin_expr)
   {
     struct BinExprVisitor
     {
       Generator *gen;
-      void operator()(const NodeBinExprAdd *add) const
+      DataType operator()(const NodeBinExprAdd *add) const
       {
-        gen->gen_expr(add->lhs);
-        gen->gen_expr(add->rhs);
+        DataType lhs_type = gen->gen_expr(add->lhs);
+        DataType rhs_type = gen->gen_expr(add->rhs);
+
+        if (lhs_type != DataType::Int || rhs_type != DataType::Int)
+        {
+          std::cerr << "Error: Addition operator requires both operands to be integers" << std::endl;
+          exit(EXIT_FAILURE);
+        }
+
         gen->pop("rax");
         gen->pop("rbx");
         gen->output << "    add rax, rbx\n";
         gen->push("rax");
+        return DataType::Int;
       }
-      void operator()(const NodeBinExprMul *mul) const
+      DataType operator()(const NodeBinExprMul *mul) const
       {
-        gen->gen_expr(mul->lhs);
-        gen->gen_expr(mul->rhs);
+        DataType lhs_type = gen->gen_expr(mul->lhs);
+        DataType rhs_type = gen->gen_expr(mul->rhs);
+
+        if (lhs_type != DataType::Int || rhs_type != DataType::Int)
+        {
+          std::cerr << "Error: Multiplication operator requires both operands to be integers" << std::endl;
+          exit(EXIT_FAILURE);
+        }
+
         gen->pop("rax");
         gen->pop("rbx");
         gen->output << "    mul rbx\n";
         gen->push("rax");
+        return DataType::Int;
       }
 
-      void operator()(const NodeBinExprSub *sub) const
+      DataType operator()(const NodeBinExprSub *sub) const
       {
-        gen->gen_expr(sub->rhs);
-        gen->gen_expr(sub->lhs);
+        DataType rhs_type = gen->gen_expr(sub->rhs);
+        DataType lhs_type = gen->gen_expr(sub->lhs);
+
+        if (lhs_type != DataType::Int || rhs_type != DataType::Int)
+        {
+          std::cerr << "Error: Subtraction operator requires both operands to be integers" << std::endl;
+          exit(EXIT_FAILURE);
+        }
+
         gen->pop("rax");
         gen->pop("rbx");
         gen->output << "    sub rax, rbx\n";
         gen->push("rax");
+        return DataType::Int;
       }
 
-      void operator()(const NodeBinExprDiv *div) const
+      DataType operator()(const NodeBinExprDiv *div) const
       {
-        gen->gen_expr(div->rhs);
-        gen->gen_expr(div->lhs);
+        DataType rhs_type = gen->gen_expr(div->rhs);
+        DataType lhs_type = gen->gen_expr(div->lhs);
+
+        if (lhs_type != DataType::Int || rhs_type != DataType::Int)
+        {
+          std::cerr << "Error: Division operator requires both operands to be integers" << std::endl;
+          exit(EXIT_FAILURE);
+        }
         gen->pop("rax");
         gen->pop("rbx");
         gen->output << "    cqo\n";      // sign-extend RAX -> RDX:RAX
         gen->output << "    idiv rbx\n"; // RAX/RBX -> quotient in RAX, remainder in RDX
-        gen->push("rdx");
+        gen->push("rax");
+        return DataType::Int;
       }
 
-      void operator()(const NodeBinExprMod *mod) const
+      DataType operator()(const NodeBinExprMod *mod) const
       {
-        gen->gen_expr(mod->rhs);
-        gen->gen_expr(mod->lhs);
+        DataType rhs_type = gen->gen_expr(mod->rhs);
+        DataType lhs_type = gen->gen_expr(mod->lhs);
+
+        if (lhs_type != DataType::Int || rhs_type != DataType::Int)
+        {
+          std::cerr << "Error: Modulo operator requires both operands to be integers" << std::endl;
+          exit(EXIT_FAILURE);
+        }
         gen->pop("rax");
         gen->pop("rbx");
-        gen->output << "    cqo\n";      // sign-extend RAX -> RDX:RAX
-        gen->output << "    idiv rbx\n"; // RAX/RBX -> quotient in RAX, remainder in RDX
+        gen->output << "    cqo\n";
+        gen->output << "    idiv rbx\n";
         gen->push("rdx");
+        return DataType::Int;
       }
 
-      void operator()(const NodeBinExprEq *eq) const
+      DataType operator()(const NodeBinExprEq *eq) const
       {
-        gen->gen_expr(eq->rhs);
-        gen->gen_expr(eq->lhs);
+        DataType rhs_type = gen->gen_expr(eq->rhs);
+        DataType lhs_type = gen->gen_expr(eq->lhs);
+
+        if (lhs_type != rhs_type)
+        {
+          std::cerr << "Error: Equality comparison requires both operands to be of the same type" << std::endl;
+          exit(EXIT_FAILURE);
+        }
         gen->pop("rax");
         gen->pop("rbx");
         gen->output << "    cmp rax, rbx\n";
         gen->output << "    sete al\n";
         gen->output << "    movzx rax, al\n";
         gen->push("rax");
+        return DataType::Int; // Boolean value of true and false
       }
 
-      void operator()(const NodeBinExprNeq *neq) const
+      DataType operator()(const NodeBinExprNeq *neq) const
       {
-        gen->gen_expr(neq->rhs);
-        gen->gen_expr(neq->lhs);
+        DataType rhs_type = gen->gen_expr(neq->rhs);
+        DataType lhs_type = gen->gen_expr(neq->lhs);
+
+        if (lhs_type != rhs_type)
+        {
+          std::cerr << "Error: Non Equality comparison requires both operands to be of the same type" << std::endl;
+          exit(EXIT_FAILURE);
+        }
         gen->pop("rax"); // lhs
         gen->pop("rbx"); // rhs
         gen->output << "    cmp rax, rbx\n";
         gen->output << "    setne al\n";
         gen->output << "    movzx rax, al\n";
         gen->push("rax");
+        return DataType::Int;
       }
 
-      void operator()(const NodeBinExprLt *lt) const
+      DataType operator()(const NodeBinExprLt *lt) const
       {
-        gen->gen_expr(lt->rhs);
-        gen->gen_expr(lt->lhs);
+        DataType rhs_type = gen->gen_expr(lt->rhs);
+        DataType lhs_type = gen->gen_expr(lt->lhs);
+
+        if (lhs_type != DataType::Int || rhs_type != DataType::Int)
+        {
+          std::cerr << "Error: Less Then operator requires both operands to be integers" << std::endl;
+          exit(EXIT_FAILURE);
+        }
         gen->pop("rax"); // lhs
         gen->pop("rbx"); // rhs
         gen->output << "    cmp rax, rbx\n";
         gen->output << "    setl al\n";
         gen->output << "    movzx rax, al\n";
         gen->push("rax");
+        return DataType::Int;
       }
 
-      void operator()(const NodeBinExprGt *gt) const
+      DataType operator()(const NodeBinExprGt *gt) const
       {
-        gen->gen_expr(gt->rhs);
-        gen->gen_expr(gt->lhs);
+        DataType rhs_type = gen->gen_expr(gt->rhs);
+        DataType lhs_type = gen->gen_expr(gt->lhs);
+
+        if (lhs_type != DataType::Int || rhs_type != DataType::Int)
+        {
+          std::cerr << "Error: Greater Then operator requires both operands to be integers" << std::endl;
+          exit(EXIT_FAILURE);
+        }
         gen->pop("rax"); // lhs
         gen->pop("rbx"); // rhs
         gen->output << "    cmp rax, rbx\n";
         gen->output << "    setg al\n";
         gen->output << "    movzx rax, al\n";
         gen->push("rax");
+        return DataType::Int;
       }
 
-      void operator()(const NodeBinExprLte *lte) const
+      DataType operator()(const NodeBinExprLte *lte) const
       {
-        gen->gen_expr(lte->rhs);
-        gen->gen_expr(lte->lhs);
+        DataType rhs_type = gen->gen_expr(lte->rhs);
+        DataType lhs_type = gen->gen_expr(lte->lhs);
+
+        if (lhs_type != DataType::Int || rhs_type != DataType::Int)
+        {
+          std::cerr << "Error: Less Then Equal to operator requires both operands to be integers" << std::endl;
+          exit(EXIT_FAILURE);
+        }
         gen->pop("rax"); // lhs
         gen->pop("rbx"); // rhs
         gen->output << "    cmp rax, rbx\n";
         gen->output << "    setle al\n";
         gen->output << "    movzx rax, al\n";
         gen->push("rax");
+        return DataType::Int;
       }
 
-      void operator()(const NodeBinExprGte *gte) const
+      DataType operator()(const NodeBinExprGte *gte) const
       {
-        gen->gen_expr(gte->rhs);
-        gen->gen_expr(gte->lhs);
+        DataType rhs_type = gen->gen_expr(gte->rhs);
+        DataType lhs_type = gen->gen_expr(gte->lhs);
+
+        if (lhs_type != DataType::Int || rhs_type != DataType::Int)
+        {
+          std::cerr << "Error: Greater Then Equal to operator requires both operands to be integers" << std::endl;
+          exit(EXIT_FAILURE);
+        }
         gen->pop("rax"); // lhs
         gen->pop("rbx"); // rhs
         gen->output << "    cmp rax, rbx\n";
         gen->output << "    setge al\n";
         gen->output << "    movzx rax, al\n";
         gen->push("rax");
+        return DataType::Int;
       }
     };
     BinExprVisitor visitor(this);
-    std::visit(visitor, bin_expr->op);
+    return std::visit(visitor, bin_expr->op);
   }
 
-  void gen_expr(const NodeExpr *expr)
+  DataType gen_expr(const NodeExpr *expr)
   {
     struct ExprVisistor
     {
       Generator *gen;
-      void operator()(const NodeTerm *term) const
+      DataType operator()(const NodeTerm *term) const
       {
-        gen->gen_term(term);
+        return gen->gen_term(term);
       }
-      void operator()(const NodeBinExpr *bin_expr) const
+      DataType operator()(const NodeBinExpr *bin_expr) const
       {
-        gen->gen_bin_expr(bin_expr);
+        return gen->gen_bin_expr(bin_expr);
       }
     };
     ExprVisistor visitor(this);
-    std::visit(visitor, expr->var);
+    return std::visit(visitor, expr->var);
   }
 
   void gen_scope(const NodeStmtScope *stmt_scope)
@@ -290,8 +385,15 @@ public:
           std::cerr << "Variable " << stmt_const->ident.val.value() << " already declared" << std::endl;
           exit(EXIT_FAILURE);
         }
-        gen->declare_var(stmt_const->ident.val.value(), Var(gen->stack_size));
-        gen->gen_expr(stmt_const->expr);
+        DataType expr_type = gen->gen_expr(stmt_const->expr);
+        if (expr_type != stmt_const->dtype)
+        {
+          std::cerr << "Error: Type mismatch for variable '" << stmt_const->ident.val.value()
+                    << "'. Expected " << gen->type_to_string(stmt_const->dtype)
+                    << " but got " << gen->type_to_string(expr_type) << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        gen->declare_var(stmt_const->ident.val.value(), Var(gen->stack_size, stmt_const->dtype));
       }
       void operator()(const NodeStmtScope *stmt_scope) const
       {
@@ -323,6 +425,7 @@ private:
   struct Var
   {
     size_t stack_loc;
+    DataType dtype;
   };
 
   struct ScopeEntry
@@ -401,6 +504,17 @@ private:
       }
     }
     return false;
+  }
+
+  std::string type_to_string(DataType type) const
+  {
+    switch (type)
+    {
+    case DataType::Int:
+      return "int";
+    default:
+      return "unknown";
+    }
   }
 
   bool is_terminated = false;
