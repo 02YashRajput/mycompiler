@@ -47,7 +47,28 @@ public:
       push("rax");
       return DataType::Char;
     }
+    case TokenType::bool_lit:
+    {
+      std::string value = tok.val.value();
 
+      if (value == "true")
+      {
+        output << "    mov rax, 1\n";
+        push("rax");
+      }
+      else if (value == "false")
+      {
+        output << "    mov rax, 0\n";
+        push("rax");
+      }
+      else
+      {
+        std::cerr << "Unknown boolean literal: " << value << "\n";
+        exit(EXIT_FAILURE);
+      }
+
+      return DataType::Bool;
+    }
     default:
       std::cerr << "Unknown literal type\n";
       exit(EXIT_FAILURE);
@@ -418,9 +439,15 @@ public:
           gen->output << "    call print_int\n";
           break;
         }
+        case DataType::Bool:
+        {
+          gen->output << "    call print_int\n";
+          break;
+        }
         case DataType::Char:
         {
           gen->output << "    call print_char\n";
+          break;
         }
 
         default:

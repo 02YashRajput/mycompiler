@@ -34,7 +34,10 @@ enum class TokenType
   int_,
   char_,
   char_lit,
-  single_qoutes,
+  bool_,
+  bool_lit,
+  true_,
+  false_,
 };
 
 struct Token
@@ -48,7 +51,7 @@ struct Token
 class Tokeniser
 {
 public:
-  explicit Tokeniser(const std::string &contents) : src(std::move(contents))
+  explicit Tokeniser(std::string contents) : src(std::move(contents))
   {
   }
 
@@ -56,6 +59,7 @@ public:
   {
     std::vector<Token> tokens;
     std::string buf = "";
+
     // Map for single-character tokens
     const std::unordered_map<char, TokenType> singleCharTokens = {
         {';', TokenType::semi},
@@ -88,7 +92,9 @@ public:
         {"elif", TokenType::elif},
         {"int", TokenType::int_},
         {"char", TokenType::char_},
-
+        {"bool", TokenType::bool_},
+        {"true", TokenType::true_},
+        {"false", TokenType::false_},
     };
 
     while (peek().has_value())
@@ -106,7 +112,15 @@ public:
         auto it = keywords.find(buf);
         if (it != keywords.end())
         {
-          tokens.emplace_back(it->second);
+          // Handle boolean literals
+          if (it->second == TokenType::true_ || it->second == TokenType::false_)
+          {
+            tokens.emplace_back(TokenType::bool_lit, buf);
+          }
+          else
+          {
+            tokens.emplace_back(it->second);
+          }
         }
         else
         {
@@ -126,11 +140,6 @@ public:
       }
       else if (std::isspace(c))
       {
-        if (c == '\n' && (tokens[tokens.size() - 1].type != TokenType::semi && tokens[tokens.size() - 1].type != TokenType::open_curly && tokens[tokens.size() - 1].type != TokenType::close_curly))
-        {
-          std::cerr << "Wrong input: expected semi " << c << "\n";
-          std::exit(EXIT_FAILURE);
-        }
         consume();
       }
       else if (c == '\'')
@@ -228,6 +237,7 @@ public:
 
     return tokens;
   }
+
   std::optional<char> peek(int offset = 0)
   {
     if (index + offset >= src.size())

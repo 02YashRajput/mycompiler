@@ -53,6 +53,5 @@ int main(int argc, char **argv)
     system("nasm -felf64 errors.asm -o errors.o");
     system("nasm -felf64 out.asm -o out.o");
     system("ld -o out out.o print.o errors.o");
-    std::cout << "Ans: ";
     return EXIT_SUCCESS;
 }
