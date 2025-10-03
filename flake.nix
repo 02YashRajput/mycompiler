@@ -16,6 +16,7 @@
             pkgs.cmake
             pkgs.clang
             pkgs.lldb
+            pkgs.gnumake
           ];
 
           CXX = "clang++";
