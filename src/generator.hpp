@@ -14,7 +14,28 @@ public:
     switch (tok.type)
     {
     case TokenType::int_lit:
-      output << "    mov rax, " << tok.val.value() << "\n";
+
+      int64_t value;
+      try
+      {
+        size_t idx;
+        value = std::stoll(tok.val.value(), &idx, 10);
+        if (idx != tok.val.value().size())
+        {
+          throw std::invalid_argument("Invalid integer literal");
+        }
+      }
+      catch (const std::out_of_range &)
+      {
+        std::cerr << "Integer literal out of bounds\n";
+        exit(EXIT_FAILURE);
+      }
+      catch (const std::invalid_argument &)
+      {
+        std::cerr << "Invalid integer literal\n";
+        exit(EXIT_FAILURE);
+      }
+      output << "    mov rax, " << value << "\n";
       push("rax");
       return DataType::Int;
 
@@ -41,13 +62,32 @@ public:
         }
         const auto &var = gen->globals.at(term_ident->ident.val.value());
         std::stringstream offset;
-        offset << "QWORD [rsp + " << (gen->stack_size - var.stack_loc - 1) * 8 << "]\n";
+        offset << "QWORD [rsp + " << (gen->stack_size - var.stack_loc) * 8 << "]";
         gen->push(offset.str());
         return var.dtype;
       }
       DataType operator()(const NodeTermParen *term_paren) const
       {
         return gen->gen_expr(term_paren->expr);
+      }
+      DataType operator()(const NodeTermUnary *term_unary) const
+      {
+        switch (term_unary->op)
+        {
+        case UnaryOp::Negate:
+        {
+          DataType dtype = gen->gen_term(term_unary->operand);
+
+          gen->pop("rax");
+          gen->output << "    neg rax\n";
+          gen->push("rax");
+          return DataType::Int;
+        }
+
+        default:
+          std::cerr << "Unknown unary operator\n";
+          exit(EXIT_FAILURE);
+        }
       }
     };
     TermVisitor visitor(this);
@@ -73,6 +113,7 @@ public:
         gen->pop("rax");
         gen->pop("rbx");
         gen->output << "    add rax, rbx\n";
+        gen->output << "    jo overflow_error\n";
         gen->push("rax");
         return DataType::Int;
       }
@@ -89,7 +130,8 @@ public:
 
         gen->pop("rax");
         gen->pop("rbx");
-        gen->output << "    mul rbx\n";
+        gen->output << "    imul rbx\n";
+        gen->output << "    jo overflow_error\n";
         gen->push("rax");
         return DataType::Int;
       }
@@ -108,6 +150,7 @@ public:
         gen->pop("rax");
         gen->pop("rbx");
         gen->output << "    sub rax, rbx\n";
+        gen->output << "    jo overflow_error\n";
         gen->push("rax");
         return DataType::Int;
       }
@@ -124,8 +167,10 @@ public:
         }
         gen->pop("rax");
         gen->pop("rbx");
-        gen->output << "    cqo\n";      // sign-extend RAX -> RDX:RAX
-        gen->output << "    idiv rbx\n"; // RAX/RBX -> quotient in RAX, remainder in RDX
+        gen->output << "    cmp rbx, 0\n";
+        gen->output << "    je divzero_error\n"; // check division by zero
+        gen->output << "    cqo\n";              // sign-extend RAX -> RDX:RAX
+        gen->output << "    idiv rbx\n";         // RAX/RBX -> quotient in RAX, remainder in RDX
         gen->push("rax");
         return DataType::Int;
       }
@@ -142,6 +187,8 @@ public:
         }
         gen->pop("rax");
         gen->pop("rbx");
+        gen->output << "    cmp rbx, 0\n";
+        gen->output << "    je divzero_error\n"; // check division by zero
         gen->output << "    cqo\n";
         gen->output << "    idiv rbx\n";
         gen->push("rdx");
@@ -407,7 +454,12 @@ public:
   std::string gen_prog()
   {
 
-    output << "extern print_int\nglobal _start\n_start:\n";
+    output << "extern print_int\n"
+           << "extern print_string\n"
+           << "extern overflow_error\n"
+           << "extern divzero_error\n"
+           << "global _start\n"
+           << "_start:\n";
 
     for (const NodeStmt *stmt : prog.stmts)
     {

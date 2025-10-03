@@ -10,6 +10,11 @@ A simple compiler written in C++ that translates a custom programming language i
 - **Expression Evaluation**: Support for complex arithmetic and comparison expressions
 - **Variable Scoping**: Block-scoped constant variables with shadowing support
 - **Memory Management**: Custom arena allocator for efficient AST node allocation
+- **Conditional Statements**: Support for if/else/elif control flow statements
+- **Print Statements**: Built-in print functionality for debugging and output
+- **Unary Operations**: Support for unary minus (negation) operator
+- **Extended Operators**: Complete set of comparison operators (==, !=, <, >, <=, >=) and modulo (%)
+- **Type System**: Explicit type declarations with integer data type support
 
 ## Language Syntax
 
@@ -19,33 +24,46 @@ A simple compiler written in C++ that translates a custom programming language i
 
 ### Variables
 
-- **Constants**: Immutable variables declared with `const`
+- **Constants**: Immutable variables declared with explicit type
 
 ```
-const x = 10;
-const y = x + 5;
+const int x = 10;
+const int y = x + 5;
 ```
 
 ### Expressions
 
 - **Arithmetic Operations**: `+`, `-`, `*`, `/`, `%`
 - **Comparison Operations**: `==`, `!=`, `<`, `>`, `<=`, `>=`
+- **Unary Operations**: `-` (negation)
 - **Parentheses**: For grouping expressions `(expression)`
 
 ### Statements
 
-- **Constant Declaration**: `const identifier = expression;`
+- **Constant Declaration**: `const type identifier = expression;`
 - **Exit Statement**: `exit expression;` (terminates program with expression value as exit code)
+- **Print Statement**: `print expression;` (outputs expression value)
 - **Block Scope**: `{ statements... }` for scoped variable declarations
+- **Conditional Statements**:
+  - `if (condition) { statements... }`
+  - `if (condition) { statements... } else { statements... }`
+  - `if (condition) { statements... } elif (condition) { statements... } else { statements... }`
 
 ### Example Program
 
 ```
-const x = 10;
-const y = 20;
+const int x = 10;
+const int y = 20;
 {
-    const z = x + y;
-    exit z > 25;
+    const int z = x + y;
+    print z;
+    if (z > 25) {
+        print 1;
+        exit 1;
+    } else {
+        print 0;
+        exit 0;
+    }
 }
 ```
 
@@ -80,6 +98,24 @@ sudo dnf install gcc-c++ cmake nasm binutils
 
 ## Building
 
+### Option 1: Using Makefile (Recommended)
+
+1. **Clone the repository:**
+
+```bash
+git clone https://github.com/02YashRajput/mycompiler.git
+cd mycompiler
+```
+
+2. **Build using Make:**
+
+```bash
+make build    # Configure with CMake
+make run      # Build and run with input.txt
+```
+
+### Option 2: Using CMake Directly
+
 1. **Clone the repository:**
 
 ```bash
@@ -108,7 +144,8 @@ cmake --build .
 1. **Create a source file** (e.g., `program.txt`):
 
 ```
-const result = 15 + 10;
+const int result = 15 + 10;
+print result;
 exit result;
 ```
 
@@ -118,6 +155,16 @@ exit result;
 ./build/mycompiler program.txt
 ./out
 echo $?  # Shows the exit code
+```
+
+### Using Make Commands
+
+The project includes a Makefile with convenient targets:
+
+```bash
+make clean    # Clean build directory
+make build    # Configure with CMake
+make run      # Build and run with input.txt
 ```
 
 ### Using the Convenience Script
@@ -157,6 +204,7 @@ mycompiler/
 │   ├── generator.hpp      # x86-64 code generator
 │   └── arenaAllocator.hpp # Memory allocator for AST nodes
 ├── CMakeLists.txt         # Build configuration
+├── Makefile              # Make build targets
 ├── Dockerfile             # Container build setup
 ├── docker-compose.yaml    # Container orchestration
 ├── flake.nix             # Nix development environment
@@ -194,10 +242,13 @@ mycompiler/
 Build and run using Docker:
 
 ```bash
-# Build the container
-docker-compose build
+# Using Make targets
+make docker-run     # Start container
+make docker-exec    # Execute into container
+make docker-clean   # Clean up containers
 
-# Run the compiler
+# Using docker-compose directly
+docker-compose build
 docker-compose run compiler
 ```
 
@@ -211,39 +262,71 @@ nix develop  # Enter development shell
 
 ## Examples
 
-### Simple Arithmetic
+### Simple Arithmetic with Print
 
 ```
-const a = 10;
-const b = 20;
-const sum = a + b;
+const int a = 10;
+const int b = 20;
+const int sum = a + b;
+print sum;
 exit sum;
 ```
 
-### Comparison Operations
+### Conditional Statements
 
 ```
-const x = 15;
-const y = 10;
-exit x > y;  # Exits with code 1 (true)
+const int x = 15;
+const int y = 10;
+if (x > y) {
+    print 1;  # Prints 1 (true)
+    exit 1;
+} else {
+    print 0;
+    exit 0;
+}
 ```
 
-### Scoped Variables
+### If-Elif-Else Chain
 
 ```
-const global = 100;
+const int score = 85;
+if (score >= 90) {
+    print 1;  # Grade A
+} elif (score >= 80) {
+    print 2;  # Grade B
+} elif (score >= 70) {
+    print 3;  # Grade C
+} else {
+    print 4;  # Grade F
+}
+exit 0;
+```
+
+### Scoped Variables with Unary Operations
+
+```
+const int global = 100;
 {
-    const local = 50;
-    const result = global + local;
+    const int local = 50;
+    const int negative = -local;
+    const int result = global + negative;
+    print result;
     exit result;
 }
 ```
 
-### Complex Expressions
+### Complex Expressions with All Operators
 
 ```
-const result = (10 + 5) * 2 - 3;
-exit result == 27;  # Exits with code 1 (true)
+const int a = 10;
+const int b = 3;
+const int result = (a + b) * 2 - a % b;
+print result;
+if (result != 25) {
+    exit 1;
+} else {
+    exit 0;
+}
 ```
 
 ## Contributing
@@ -259,10 +342,14 @@ exit result == 27;  # Exits with code 1 (true)
 
 - [ ] Implement loops (`while`, `for`)
 - [ ] Add function definitions and calls
-- [ ] Support for more data types (strings, booleans)
-- [ ] Enhanced error reporting with line numbers
+- [ ] Support for more data types (strings, booleans, floats)
+- [ ] Enhanced error reporting with line numbers and column numbers
 - [ ] Optimization passes for generated assembly
 - [ ] Support for additional target architectures
+- [ ] Variable assignment and mutation
+- [ ] Arrays and data structures
+- [ ] String literals and string operations
+- [ ] Boolean literals and logical operators (&&, ||, !)
 
 ## License
 

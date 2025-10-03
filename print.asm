@@ -4,8 +4,11 @@
 ; clobbers: RAX, RBX, RCX, RDX, RSI, R8, R9
 ; ============================================
 global print_int
+global print_string
 
 section .text
+
+; -------------------------------
 print_int:
     push    rbp
     mov     rbp, rsp
@@ -60,6 +63,33 @@ print_int:
     mov     rdi, 1              ; fd = stdout
     mov     rsi, r8             ; buf
     mov     rdx, rcx            ; len
+    syscall
+
+    leave
+    ret
+
+; -------------------------------
+; print_string: prints null-terminated string
+; arg: RDI = pointer to string
+; clobbers: RAX, RCX, RDX, RSI
+; ============================================
+print_string:
+    push    rbp
+    mov     rbp, rsp
+
+    mov     rsi, rdi        ; rsi points to string
+    xor     rcx, rcx        ; counter for length
+
+.len_loop:
+    cmp     byte [rsi + rcx], 0
+    je      .len_done
+    inc     rcx
+    jmp     .len_loop
+
+.len_done:
+    mov     rax, 1          ; sys_write
+    mov     rdi, 1          ; stdout
+    mov     rdx, rcx        ; length
     syscall
 
     leave

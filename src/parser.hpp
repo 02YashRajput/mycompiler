@@ -11,6 +11,11 @@ enum class DataType
   Int,
 };
 
+enum class UnaryOp
+{
+  Negate
+};
+
 struct NodeExpr;
 
 struct NodeBinExprEq
@@ -70,6 +75,14 @@ struct NodeBinExprMul
   NodeExpr *rhs;
 };
 
+struct NodeTerm;
+
+struct NodeTermUnary
+{
+  UnaryOp op;
+  NodeTerm *operand;
+};
+
 struct NodeTermLit
 {
   Token token;
@@ -86,7 +99,7 @@ struct NodeTermParen
 };
 struct NodeTerm
 {
-  std::variant<NodeTermLit *, NodeTermIdent *, NodeTermParen *> val;
+  std::variant<NodeTermLit *, NodeTermIdent *, NodeTermParen *, NodeTermUnary *> val;
 };
 
 struct NodeBinExpr
@@ -161,7 +174,7 @@ public:
   explicit Parser(std::vector<Token> token_vec)
       : tokens(std::move(token_vec)), allocator(1024 * 1024 * 4) {}
 
-  std::optional<NodeTerm *> parse_term()
+  std::optional<NodeTerm *> parse_term(bool allow_unary = true)
   {
     if (auto int_lit_token = try_consume(TokenType::int_lit))
     {
@@ -169,6 +182,27 @@ public:
       auto *node_lit = allocator.alloc<NodeTermLit>();
       node_lit->token = int_lit_token.value();
       node_term->val = node_lit;
+      return node_term;
+    }
+    else if (auto minus_token = try_consume(TokenType::sub))
+    {
+      if (allow_unary == false)
+      {
+        std::cerr << "Expected term but got minus\n";
+        std::exit(EXIT_FAILURE);
+      }
+      auto operand = parse_term(false);
+      if (!operand.has_value())
+      {
+        std::cerr << "Expected term after unary minus\n";
+        std::exit(EXIT_FAILURE);
+      }
+      auto *node_unary = allocator.alloc<NodeTermUnary>();
+      node_unary->op = UnaryOp::Negate;
+      node_unary->operand = operand.value();
+
+      auto *node_term = allocator.alloc<NodeTerm>();
+      node_term->val = node_unary;
       return node_term;
     }
     else if (auto ident_token = try_consume(TokenType::ident))
@@ -203,9 +237,9 @@ public:
     return std::nullopt;
   }
 
-  std::optional<NodeExpr *> parse_expr(int min_prec = 0)
+  std::optional<NodeExpr *> parse_expr(int min_prec = 0, bool allow_unary = true)
   {
-    std::optional<NodeTerm *> term_lhs = parse_term();
+    std::optional<NodeTerm *> term_lhs = parse_term(allow_unary);
     if (!term_lhs.has_value())
     {
       return std::nullopt;
@@ -233,7 +267,7 @@ public:
       }
       Token op = consume();
       int next_min_prec = prec + 1;
-      auto expr_rhs = parse_expr(next_min_prec);
+      auto expr_rhs = parse_expr(next_min_prec, false);
       if (!expr_rhs.has_value())
       {
         std::cerr << "Unable to parse expression" << std::endl;

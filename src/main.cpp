@@ -49,9 +49,10 @@ int main(int argc, char **argv)
         std::fstream file("out.asm", std::ios::out);
         file << output;
     }
-    system("nasm -felf64 print_int.asm -o print_int.o");
+    system("nasm -felf64 print.asm -o print.o");
+    system("nasm -felf64 errors.asm -o errors.o");
     system("nasm -felf64 out.asm -o out.o");
-    system("ld -o out out.o print_int.o");
+    system("ld -o out out.o print.o errors.o");
     std::cout << "Ans: ";
     return EXIT_SUCCESS;
 }
