@@ -14,6 +14,7 @@ public:
     switch (tok.type)
     {
     case TokenType::int_lit:
+    {
 
       int64_t value;
       try
@@ -38,6 +39,14 @@ public:
       output << "    mov rax, " << value << "\n";
       push("rax");
       return DataType::Int;
+    }
+    case TokenType::char_lit:
+    {
+      char value = tok.val.value()[0];
+      output << "    mov rax, " << static_cast<int64_t>(value) << "\n";
+      push("rax");
+      return DataType::Char;
+    }
 
     default:
       std::cerr << "Unknown literal type\n";
@@ -400,9 +409,23 @@ public:
       }
       void operator()(const NodeStmtPrint *stmt_print) const
       {
-        gen->gen_expr(stmt_print->expr);
+        DataType dtpye = gen->gen_expr(stmt_print->expr);
         gen->pop("rdi");
-        gen->output << "    call print_int\n";
+        switch (dtpye)
+        {
+        case DataType::Int:
+        {
+          gen->output << "    call print_int\n";
+          break;
+        }
+        case DataType::Char:
+        {
+          gen->output << "    call print_char\n";
+        }
+
+        default:
+          break;
+        }
       }
       void operator()(const NodeStmtIf *stmt_if) const
       {
@@ -456,6 +479,7 @@ public:
 
     output << "extern print_int\n"
            << "extern print_string\n"
+           << "extern print_char\n"
            << "extern overflow_error\n"
            << "extern divzero_error\n"
            << "global _start\n"
@@ -564,6 +588,8 @@ private:
     {
     case DataType::Int:
       return "int";
+    case DataType::Char:
+      return "char";
     default:
       return "unknown";
     }

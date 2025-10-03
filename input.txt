@@ -1,5 +1,3 @@
-const int x = -9223372036854775807;
-const int y = 2;
-const int z = x - y;
-print z;
+const char c = '\n';
+print c;
 exit 0;

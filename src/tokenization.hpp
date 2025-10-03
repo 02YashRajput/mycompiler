@@ -32,9 +32,9 @@ enum class TokenType
   else_,
   elif,
   int_,
-  // string_,
-  // string_lit,
-  // double_qoutes,
+  char_,
+  char_lit,
+  single_qoutes,
 };
 
 struct Token
@@ -87,7 +87,7 @@ public:
         {"else", TokenType::else_},
         {"elif", TokenType::elif},
         {"int", TokenType::int_},
-        // {"string", TokenType::string_},
+        {"char", TokenType::char_},
 
     };
 
@@ -132,6 +132,68 @@ public:
           std::exit(EXIT_FAILURE);
         }
         consume();
+      }
+      else if (c == '\'')
+      {
+        consume(); // consume opening '
+
+        if (!peek().has_value())
+        {
+          std::cerr << "Unexpected end of input after '\''\n";
+          std::exit(EXIT_FAILURE);
+        }
+
+        char charValue;
+        char nextChar = consume();
+
+        if (nextChar == '\\') // escaped character
+        {
+          if (!peek().has_value())
+          {
+            std::cerr << "Unexpected end of input after escape character\n";
+            std::exit(EXIT_FAILURE);
+          }
+
+          char escapeChar = consume();
+          switch (escapeChar)
+          {
+          case 'n':
+            charValue = '\n';
+            break;
+          case 't':
+            charValue = '\t';
+            break;
+          case '\\':
+            charValue = '\\';
+            break;
+          case '\'':
+            charValue = '\'';
+            break;
+          case '0':
+            charValue = '\0';
+            break;
+          default:
+            std::cerr << "Unknown escape sequence \\" << escapeChar << "\n";
+            std::exit(EXIT_FAILURE);
+          }
+        }
+        else
+        {
+          charValue = nextChar; // normal character
+        }
+
+        // closing '
+        if (!peek().has_value() || peek().value() != '\'')
+        {
+          std::cerr << "Expected closing single quote for char literal\n";
+          std::exit(EXIT_FAILURE);
+        }
+
+        consume(); // consume closing '
+        buf = charValue;
+        tokens.emplace_back(TokenType::char_lit, buf);
+        buf.clear();
+        continue;
       }
       else
       {

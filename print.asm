@@ -5,6 +5,7 @@
 ; ============================================
 global print_int
 global print_string
+global print_char
 
 section .text
 
@@ -92,5 +93,25 @@ print_string:
     mov     rdx, rcx        ; length
     syscall
 
+    leave
+    ret
+
+
+print_char:
+    push    rbp
+    mov     rbp, rsp
+
+    ; store character on stack
+    sub     rsp, 1           ; 1-byte buffer
+    mov     byte [rsp], dil  ; move lower 8 bits of RDI to buffer
+
+    ; write(1, rsp, 1)
+    mov     rax, 1           ; sys_write
+    mov     rdi, 1           ; fd = stdout
+    lea     rsi, [rsp]       ; buffer
+    mov     rdx, 1           ; length = 1
+    syscall
+
+    add     rsp, 1
     leave
     ret

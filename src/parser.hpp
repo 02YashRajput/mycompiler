@@ -9,6 +9,7 @@
 enum class DataType
 {
   Int,
+  Char,
 };
 
 enum class UnaryOp
@@ -181,6 +182,14 @@ public:
       auto *node_term = allocator.alloc<NodeTerm>();
       auto *node_lit = allocator.alloc<NodeTermLit>();
       node_lit->token = int_lit_token.value();
+      node_term->val = node_lit;
+      return node_term;
+    }
+    if (auto char_lit_token = try_consume(TokenType::char_lit))
+    {
+      auto *node_term = allocator.alloc<NodeTerm>();
+      auto *node_lit = allocator.alloc<NodeTermLit>();
+      node_lit->token = char_lit_token.value();
       node_term->val = node_lit;
       return node_term;
     }
@@ -512,7 +521,9 @@ public:
         std::cerr << "Expected valid type after const\n";
         std::exit(EXIT_FAILURE);
       }
+      std::cout << "type " << type_to_string(it->second) << std::endl;
       DataType dtype = it->second;
+      node_stmt_const->dtype = dtype;
       consume();
       if (!peek().has_value() || peek()->type != TokenType::ident)
       {
@@ -672,8 +683,22 @@ private:
     return -1;
   }
 
+  std::string type_to_string(DataType type) const
+  {
+    switch (type)
+    {
+    case DataType::Int:
+      return "int";
+    case DataType::Char:
+      return "char";
+    default:
+      return "unknown";
+    }
+  }
+
   std::unordered_map<TokenType, DataType> typeMappings = {
-      {TokenType::int_, DataType::Int}};
+      {TokenType::int_, DataType::Int},
+      {TokenType::char_, DataType::Char}};
 
   std::unordered_map<TokenType, int> precedence =
       {
