@@ -1,14 +1,16 @@
-.PHONY: clean build run docker-build docker-run docker-exec docker-clean
+.PHONY: clean setup build run docker-build docker-run docker-exec docker-clean
 
 clean:
 	rm -rf build
 
-build: clean
+setup: clean
 	mkdir -p build
 	cd build && cmake ..
 
-run:
+build: 
 	cmake --build build/
+
+run: build
 	./build/mycompiler input.txt
 	./out
 

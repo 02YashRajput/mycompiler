@@ -107,7 +107,11 @@ public:
         case UnaryOp::Negate:
         {
           DataType dtype = gen->gen_term(term_unary->operand);
-
+          if (dtype != DataType::Int)
+          {
+            std::cerr << "Cannot use '-' on no integers\n";
+            exit(EXIT_FAILURE);
+          }
           gen->pop("rax");
           gen->output << "    neg rax\n";
           gen->push("rax");
@@ -241,7 +245,7 @@ public:
         gen->output << "    sete al\n";
         gen->output << "    movzx rax, al\n";
         gen->push("rax");
-        return DataType::Int; // Boolean value of true and false
+        return DataType::Bool; // Boolean value of true and false
       }
 
       DataType operator()(const NodeBinExprNeq *neq) const
@@ -260,7 +264,7 @@ public:
         gen->output << "    setne al\n";
         gen->output << "    movzx rax, al\n";
         gen->push("rax");
-        return DataType::Int;
+        return DataType::Bool;
       }
 
       DataType operator()(const NodeBinExprLt *lt) const
@@ -279,7 +283,7 @@ public:
         gen->output << "    setl al\n";
         gen->output << "    movzx rax, al\n";
         gen->push("rax");
-        return DataType::Int;
+        return DataType::Bool;
       }
 
       DataType operator()(const NodeBinExprGt *gt) const
@@ -298,7 +302,7 @@ public:
         gen->output << "    setg al\n";
         gen->output << "    movzx rax, al\n";
         gen->push("rax");
-        return DataType::Int;
+        return DataType::Bool;
       }
 
       DataType operator()(const NodeBinExprLte *lte) const
@@ -317,7 +321,7 @@ public:
         gen->output << "    setle al\n";
         gen->output << "    movzx rax, al\n";
         gen->push("rax");
-        return DataType::Int;
+        return DataType::Bool;
       }
 
       DataType operator()(const NodeBinExprGte *gte) const
@@ -336,7 +340,7 @@ public:
         gen->output << "    setge al\n";
         gen->output << "    movzx rax, al\n";
         gen->push("rax");
-        return DataType::Int;
+        return DataType::Bool;
       }
     };
     BinExprVisitor visitor(this);
