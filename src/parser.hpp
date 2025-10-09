@@ -126,6 +126,18 @@ struct NodeStmtConst
   NodeExpr *expr;
 };
 
+struct NodeStmtAssign
+{
+  Token ident;
+  NodeExpr *expr;
+};
+struct NodeStmtLet
+{
+  Token ident;
+  DataType dtype;
+  std::optional<NodeExpr *> expr;
+};
+
 struct NodeStmt;
 
 struct NodeStmtPrint
@@ -162,7 +174,7 @@ struct NodeStmtIf
 };
 struct NodeStmt
 {
-  std::variant<NodeStmtExit *, NodeStmtConst *, NodeStmtScope *, NodeStmtPrint *, NodeStmtIf *> stmt;
+  std::variant<NodeStmtExit *, NodeStmtConst *, NodeStmtScope *, NodeStmtPrint *, NodeStmtIf *, NodeStmtLet *, NodeStmtAssign *> stmt;
 };
 
 struct NodeProg
@@ -538,8 +550,8 @@ public:
         std::cerr << "Expected identifier after type\n";
         std::exit(EXIT_FAILURE);
       }
-      auto *node_stmt = allocator.alloc<NodeStmt>();
       node_stmt_const->ident = consume();
+      auto *node_stmt = allocator.alloc<NodeStmt>();
       if (!peek().has_value() || peek()->type != TokenType::assign)
       {
         std::cerr << "Expected '=' after identifier\n";
@@ -562,6 +574,86 @@ public:
       }
 
       node_stmt->stmt = node_stmt_const;
+      return node_stmt;
+    }
+    else if (peek().has_value() && peek()->type == TokenType::let)
+    {
+      consume();
+      auto *node_stmt_let = allocator.alloc<NodeStmtLet>();
+      if (!peek().has_value())
+      {
+        std::cerr << "Expected type after const\n";
+        std::exit(EXIT_FAILURE);
+      }
+      auto it = typeMappings.find(peek()->type);
+      if (it == typeMappings.end())
+      {
+        std::cerr << "Expected valid type after const\n";
+        std::exit(EXIT_FAILURE);
+      }
+      DataType dtype = it->second;
+      node_stmt_let->dtype = dtype;
+      consume();
+      if (!peek().has_value() || peek()->type != TokenType::ident)
+      {
+        std::cerr << "Expected identifier after type\n";
+        std::exit(EXIT_FAILURE);
+      }
+      node_stmt_let->ident = consume();
+      auto *node_stmt = allocator.alloc<NodeStmt>();
+      // Optional assignment
+      if (peek().has_value() && peek()->type == TokenType::assign)
+      {
+        consume(); // consume '='
+
+        if (auto node_expr = parse_expr())
+        {
+          node_stmt_let->expr = node_expr.value();
+        }
+        else
+        {
+          std::cerr << "Expected expression after '='\n";
+          std::exit(EXIT_FAILURE);
+        }
+      }
+
+      // Require semicolon in both cases
+      if (!try_consume(TokenType::semi))
+      {
+        std::cerr << "Expected ';' after let statement\n";
+        std::exit(EXIT_FAILURE);
+      }
+
+      node_stmt->stmt = node_stmt_let;
+      return node_stmt;
+    }
+    else if (peek().has_value() && peek()->type == TokenType::ident)
+    {
+      auto *node_stmt_assign = allocator.alloc<NodeStmtAssign>();
+      node_stmt_assign->ident = consume();
+
+      if (!peek().has_value() || peek()->type != TokenType::assign)
+      {
+        std::cerr << "Expected '=' after identifier\n";
+        std::exit(EXIT_FAILURE);
+      }
+      consume();
+      if (auto node_expr = parse_expr())
+      {
+        node_stmt_assign->expr = node_expr.value();
+        if (!try_consume(TokenType::semi))
+        {
+          std::cerr << "Expected semi\n";
+          std::exit(EXIT_FAILURE);
+        }
+      }
+      else
+      {
+        std::cerr << "Expected Expression\n";
+        std::exit(EXIT_FAILURE);
+      }
+      auto *node_stmt = allocator.alloc<NodeStmt>();
+      node_stmt->stmt = node_stmt_assign;
       return node_stmt;
     }
     else if (peek().has_value() && peek()->type == TokenType::open_curly)

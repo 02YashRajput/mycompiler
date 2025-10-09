@@ -38,6 +38,7 @@ enum class TokenType
   bool_lit,
   true_,
   false_,
+  let
 };
 
 struct Token
@@ -95,7 +96,7 @@ public:
         {"bool", TokenType::bool_},
         {"true", TokenType::true_},
         {"false", TokenType::false_},
-    };
+        {"let", TokenType::let}};
 
     while (peek().has_value())
     {

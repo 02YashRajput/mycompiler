@@ -496,6 +496,62 @@ public:
         }
         gen->declare_var(stmt_const->ident.val.value(), Var(gen->stack_size, stmt_const->dtype));
       }
+      void operator()(const NodeStmtLet *stmt_let) const
+      {
+        if (gen->is_declared(stmt_let->ident.val.value()))
+        {
+          std::cerr << "Variable " << stmt_let->ident.val.value() << " already declared" << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        if (!stmt_let->expr.has_value())
+        {
+          gen->output << "mov rax, 0\n";
+          gen->push("rax");
+        }
+        else
+        {
+          DataType expr_type = gen->gen_expr(stmt_let->expr.value());
+          if (expr_type != stmt_let->dtype)
+          {
+            std::cerr << "Error: Type mismatch for variable '" << stmt_let->ident.val.value()
+                      << "'. Expected " << gen->type_to_string(stmt_let->dtype)
+                      << " but got " << gen->type_to_string(expr_type) << std::endl;
+            exit(EXIT_FAILURE);
+          }
+        }
+        gen->declare_var(stmt_let->ident.val.value(), Var(gen->stack_size, stmt_let->dtype, true));
+      }
+      void operator()(const NodeStmtAssign *stmt_assign)
+      {
+        if (!stmt_assign->ident.val.has_value())
+        {
+          std::cerr << "Error: Assignment statement missing identifier." << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        if (!gen->globals.contains(stmt_assign->ident.val.value()))
+        {
+          std::cerr << "You need to declare the variable first";
+          exit(EXIT_FAILURE);
+        }
+        auto &existing_var = gen->globals.at(stmt_assign->ident.val.value());
+        if (!existing_var.mut)
+        {
+          std::cerr << "Error: Cannot assign to immutable variable '"
+                    << stmt_assign->ident.val.value() << "'\n";
+          exit(EXIT_FAILURE);
+        }
+        DataType type = gen->gen_expr(stmt_assign->expr);
+        if (type != existing_var.dtype)
+        {
+          std::cerr << "Error: Type mismatch in assignment to '"
+                    << stmt_assign->ident.val.value() << "'. Expected "
+                    << gen->type_to_string(existing_var.dtype)
+                    << ", got " << gen->type_to_string(type) << "\n";
+          exit(EXIT_FAILURE);
+        }
+        const auto new_var = Var(gen->stack_size, type, true);
+        gen->update_var(stmt_assign->ident.val.value(), existing_var, new_var);
+      }
       void operator()(const NodeStmtScope *stmt_scope) const
       {
         gen->gen_scope(stmt_scope);
@@ -533,6 +589,10 @@ private:
   {
     size_t stack_loc;
     DataType dtype;
+    bool mut;
+    Var() : stack_loc(0), dtype(DataType::Int), mut(false) {}
+    Var(size_t stack_loc, DataType dtype, bool mut = false)
+        : stack_loc(stack_loc), dtype(dtype), mut(mut) {}
   };
 
   struct ScopeEntry
@@ -558,8 +618,7 @@ private:
     return ss.str();
   }
 
-  void
-  enter_scope()
+  void enter_scope()
   {
     scopes.push_back({});
   }
@@ -570,7 +629,7 @@ private:
     {
       if (entry.old_binding.has_value())
       {
-        // Restore shadowed variable
+        // Restore the old value (either from shadowing or from assignment)
         globals[entry.name] = entry.old_binding.value();
       }
       else
@@ -580,6 +639,18 @@ private:
       }
     }
     scopes.pop_back();
+  }
+
+  void update_var(const std::string &name, Var &old_var, Var new_var)
+  {
+    // Save the current state before modifying
+    if (!scopes.empty())
+    {
+      scopes.back().push_back({name, old_var});
+    }
+
+    // Now update the variable
+    old_var = new_var;
   }
 
   void declare_var(const std::string &name, Var var)
