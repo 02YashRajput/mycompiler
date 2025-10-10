@@ -38,7 +38,11 @@ enum class TokenType
   bool_lit,
   true_,
   false_,
-  let
+  let,
+  and_,
+  or_,
+  not_,
+
 };
 
 struct Token
@@ -75,13 +79,16 @@ public:
         {'(', TokenType::open_paren},
         {')', TokenType::close_paren},
         {'{', TokenType::open_curly},
-        {'}', TokenType::close_curly}};
+        {'}', TokenType::close_curly},
+        {'!', TokenType::not_}};
 
     const std::unordered_map<std::string, TokenType> doubleCharTokens = {
         {"==", TokenType::eq},
         {"!=", TokenType::neq},
         {"<=", TokenType::lte},
-        {">=", TokenType::gte}};
+        {">=", TokenType::gte},
+        {"&&", TokenType::and_},
+        {"||", TokenType::or_}};
 
     // Map for keywords
     const std::unordered_map<std::string, TokenType> keywords = {

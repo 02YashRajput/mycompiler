@@ -1,7 +1,2 @@
-let int x = 10;
-{
-  x = 20;
-  print x;
-}
-print x;
+print (0 || 0);
 exit 0;

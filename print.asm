@@ -26,6 +26,7 @@ print_int:
     cmp     rax, 0
     jne     .not_zero
     mov     byte [r8], '0'
+    dec     r8 
     inc     rcx
     jmp     .write_out
 .not_zero:

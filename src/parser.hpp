@@ -15,7 +15,8 @@ enum class DataType
 
 enum class UnaryOp
 {
-  Negate
+  Negate,
+  Not,
 };
 
 struct NodeExpr;
@@ -40,6 +41,19 @@ struct NodeBinExprGt
   NodeExpr *lhs;
   NodeExpr *rhs;
 };
+
+struct NodeBinExprAnd
+{
+  NodeExpr *lhs;
+  NodeExpr *rhs;
+};
+
+struct NodeBinExprOr
+{
+  NodeExpr *lhs;
+  NodeExpr *rhs;
+};
+
 struct NodeBinExprLte
 {
   NodeExpr *lhs;
@@ -106,7 +120,7 @@ struct NodeTerm
 
 struct NodeBinExpr
 {
-  std::variant<NodeBinExprAdd *, NodeBinExprMul *, NodeBinExprSub *, NodeBinExprDiv *, NodeBinExprMod *, NodeBinExprEq *, NodeBinExprGt *, NodeBinExprNeq *, NodeBinExprLte *, NodeBinExprGte *, NodeBinExprLt *> op;
+  std::variant<NodeBinExprAdd *, NodeBinExprMul *, NodeBinExprSub *, NodeBinExprDiv *, NodeBinExprMod *, NodeBinExprEq *, NodeBinExprGt *, NodeBinExprNeq *, NodeBinExprLte *, NodeBinExprGte *, NodeBinExprLt *, NodeBinExprAnd *, NodeBinExprOr *> op;
 };
 
 struct NodeExpr
@@ -229,6 +243,27 @@ public:
       }
       auto *node_unary = allocator.alloc<NodeTermUnary>();
       node_unary->op = UnaryOp::Negate;
+      node_unary->operand = operand.value();
+
+      auto *node_term = allocator.alloc<NodeTerm>();
+      node_term->val = node_unary;
+      return node_term;
+    }
+    else if (auto not_token = try_consume(TokenType::not_))
+    {
+      if (allow_unary == false)
+      {
+        std::cerr << "Expected term but got minus\n";
+        std::exit(EXIT_FAILURE);
+      }
+      auto operand = parse_term(false);
+      if (!operand.has_value())
+      {
+        std::cerr << "Expected term after unary minus\n";
+        std::exit(EXIT_FAILURE);
+      }
+      auto *node_unary = allocator.alloc<NodeTermUnary>();
+      node_unary->op = UnaryOp::Not;
       node_unary->operand = operand.value();
 
       auto *node_term = allocator.alloc<NodeTerm>();
@@ -380,6 +415,20 @@ public:
         bin_expr_gte->lhs = expr_lhs;
         bin_expr_gte->rhs = expr_rhs.value();
         bin_expr->op = bin_expr_gte;
+      }
+      else if (op.type == TokenType::and_)
+      {
+        auto bin_expr_and = allocator.alloc<NodeBinExprAnd>();
+        bin_expr_and->lhs = expr_lhs;
+        bin_expr_and->rhs = expr_rhs.value();
+        bin_expr->op = bin_expr_and;
+      }
+      else if (op.type == TokenType::or_)
+      {
+        auto bin_expr_or = allocator.alloc<NodeBinExprOr>();
+        bin_expr_or->lhs = expr_lhs;
+        bin_expr_or->rhs = expr_rhs.value();
+        bin_expr->op = bin_expr_or;
       }
       else
       {
@@ -790,21 +839,25 @@ private:
 
   };
 
-  std::unordered_map<TokenType, int> precedence =
-      {
-          {TokenType::eq, 0}, // ==, !=
-          {TokenType::neq, 0},
-          {TokenType::lt, 0}, // <, >, <=, >=
-          {TokenType::gt, 0},
-          {TokenType::lte, 0},
-          {TokenType::gte, 0},
+  std::unordered_map<TokenType, int> precedence = {
+      {TokenType::or_, 0},  // ||
+      {TokenType::and_, 1}, // &&
 
-          {TokenType::plus, 1}, // +, -
-          {TokenType::sub, 1},
+      {TokenType::eq, 2}, // ==, !=
+      {TokenType::neq, 2},
 
-          {TokenType::mul, 2}, // *, /, %
-          {TokenType::div, 2},
-          {TokenType::mod, 2}};
+      {TokenType::lt, 3}, // <, >, <=, >=
+      {TokenType::gt, 3},
+      {TokenType::lte, 3},
+      {TokenType::gte, 3},
+
+      {TokenType::plus, 4}, // +, -
+      {TokenType::sub, 4},
+
+      {TokenType::mul, 5}, // *, /, %
+      {TokenType::div, 5},
+      {TokenType::mod, 5},
+  };
 
   std::vector<Token> tokens;
   size_t index = 0;

@@ -109,13 +109,33 @@ public:
           DataType dtype = gen->gen_term(term_unary->operand);
           if (dtype != DataType::Int)
           {
-            std::cerr << "Cannot use '-' on no integers\n";
+            std::cerr << "Cannot use '-' on non integers\n";
             exit(EXIT_FAILURE);
           }
           gen->pop("rax");
           gen->output << "    neg rax\n";
           gen->push("rax");
           return DataType::Int;
+        }
+        case UnaryOp::Not:
+        {
+          DataType dtype = gen->gen_term(term_unary->operand);
+          if (dtype != DataType::Int && dtype != DataType::Bool)
+          {
+            std::cerr << "Cannot use '!' on non-integers or non-booleans\n";
+            exit(EXIT_FAILURE);
+          }
+
+          gen->pop("rax");
+          // Compare rax with 0
+          gen->output << "    cmp rax, 0\n";
+          // Set AL to 1 if equal (operand was 0), else 0
+          gen->output << "    sete al\n";
+          // Zero-extend AL into RAX
+          gen->output << "    movzx rax, al\n";
+          gen->push("rax");
+
+          return DataType::Bool;
         }
 
         default:
@@ -339,6 +359,60 @@ public:
         gen->output << "    cmp rax, rbx\n";
         gen->output << "    setge al\n";
         gen->output << "    movzx rax, al\n";
+        gen->push("rax");
+        return DataType::Bool;
+      }
+      DataType operator()(const NodeBinExprAnd *gte) const
+      {
+        DataType rhs_type = gen->gen_expr(gte->rhs);
+        DataType lhs_type = gen->gen_expr(gte->lhs);
+
+        if ((lhs_type != DataType::Int && lhs_type != DataType::Bool) || (rhs_type != DataType::Int && rhs_type != DataType::Bool))
+        {
+          std::cerr << "Error: Greater Then Equal to operator requires both operands to be integers" << std::endl;
+          exit(EXIT_FAILURE);
+        }
+
+        gen->pop("rax"); // lhs
+        gen->pop("rbx"); // rhs
+
+        gen->output << "    cmp rax, 0\n";
+        gen->output << "    setne al\n";
+        gen->output << "    movzx rax, al\n";
+
+        gen->output << "    cmp rbx, 0\n";
+        gen->output << "    setne bl\n";
+        gen->output << "    movzx rbx, bl\n";
+
+        // Logical AND (bitwise and of 0/1 values)
+        gen->output << "    and rax, rbx\n";
+
+        gen->push("rax");
+        return DataType::Bool;
+      }
+      DataType operator()(const NodeBinExprOr *gte) const
+      {
+        DataType rhs_type = gen->gen_expr(gte->rhs);
+        DataType lhs_type = gen->gen_expr(gte->lhs);
+
+        if (lhs_type != DataType::Int || rhs_type != DataType::Int)
+        {
+          std::cerr << "Error: Greater Then Equal to operator requires both operands to be integers" << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        gen->pop("rax"); // lhs
+        gen->pop("rbx"); // rhs
+        gen->output << "    cmp rax, 0\n";
+        gen->output << "    setne al\n";
+        gen->output << "    movzx rax, al\n";
+
+        gen->output << "    cmp rbx, 0\n";
+        gen->output << "    setne bl\n";
+        gen->output << "    movzx rbx, bl\n";
+
+        // Logical OR (bitwise or of 0/1 values)
+        gen->output << "    or rax, rbx\n";
+
         gen->push("rax");
         return DataType::Bool;
       }
