@@ -5,7 +5,7 @@
             "name": "Debug MyCompiler",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/mycompiler",
+            "program": "${workspaceFolder}/debug/mycompiler",
             "args": ["${workspaceFolder}/input.txt"],
             "cwd": "${workspaceFolder}",
             "stopOnEntry": false,

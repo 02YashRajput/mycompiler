@@ -1,2 +1,5 @@
-print (0 || 0);
+const char a = 'a'; // hedfgdfjkgdfkbsdjb
+print a ;/*dfgkdhfgkjdnkj
+dfgjdbfjgbdjk
+dbfhjgbvd*/
 exit 0;

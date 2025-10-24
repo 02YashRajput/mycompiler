@@ -7,7 +7,7 @@
             "command": "cmake",
             "args": [
                 "-S", "${workspaceFolder}",
-                "-B", "${workspaceFolder}/build",
+                "-B", "${workspaceFolder}/debug",
                 "-DCMAKE_BUILD_TYPE=${input:buildType}"
             ],
             "group": {

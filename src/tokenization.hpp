@@ -196,6 +196,11 @@ public:
         }
         else
         {
+          if (nextChar == '\n')
+          {
+            std::cerr << "Error: newline in character literal\n";
+            std::exit(EXIT_FAILURE);
+          }
           charValue = nextChar; // normal character
         }
 
@@ -211,6 +216,27 @@ public:
         tokens.emplace_back(TokenType::char_lit, buf);
         buf.clear();
         continue;
+      }
+      else if (c == '/')
+      {
+        if (peek(1).has_value() && peek(1).value() == '/')
+        {
+          while (peek().has_value() && peek().value() != '\n')
+          {
+            consume();
+          }
+        }
+        else if (peek(1).has_value() && peek(1).value() == '*')
+        {
+          consume();
+          consume();
+          while (peek().has_value() && peek().value() != '*' && peek(1).has_value() && peek(1).value() != '/')
+          {
+            consume();
+          }
+          consume();
+          consume();
+        }
       }
       else
       {

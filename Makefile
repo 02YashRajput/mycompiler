@@ -1,4 +1,4 @@
-.PHONY: clean setup build run docker-build docker-run docker-exec docker-clean
+.PHONY: clean setup build run docker-build docker-run docker-exec docker-clean setup-debug
 
 clean:
 	rm -rf build
@@ -6,6 +6,11 @@ clean:
 setup: clean
 	mkdir -p build
 	cd build && cmake ..
+
+setup-debug: clean
+	mkdir -p debug
+	cd debug && cmake -DCMAKE_BUILD_TYPE=Debug ..
+	cmake --build debug/ 
 
 build: 
 	cmake --build build/
